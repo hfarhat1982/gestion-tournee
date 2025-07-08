@@ -33,7 +33,11 @@ export const useOrderStore = create<OrderState>((set, get) => ({
           *,
           customer:customers(*),
           palette_type:palette_types(*),
-          time_slot:time_slots(*)
+          time_slot:time_slots(*),
+          order_items(
+            *,
+            palette_type:palette_types(*)
+          )
         `)
         .order('created_at', { ascending: false });
 
@@ -91,15 +95,29 @@ export const useOrderStore = create<OrderState>((set, get) => ({
   createOrder: async (orderData: Partial<Order>) => {
     try {
       set({ loading: true });
-      const { data, error } = await supabase
-        .from('orders')
-        .insert([orderData])
-        .select()
-        .single();
-
-      if (error) handleSupabaseError(error);
       
-      const newOrder = data as Order;
+      // Utilise la Deno function au lieu d'insérer directement
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
+      const functionsUrl = import.meta.env.VITE_SUPABASE_FUNCTIONS_API_ORDERS_URL;
+      const response = await fetch(functionsUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken && { 'Authorization': `Bearer ${accessToken}` })
+        },
+        body: JSON.stringify(orderData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de la création de la commande');
+      }
+
+      const newOrder = await response.json();
+      
+      // Met à jour le store avec la nouvelle commande complète
       set(state => ({ orders: [newOrder, ...state.orders] }));
       return newOrder;
     } catch (error) {

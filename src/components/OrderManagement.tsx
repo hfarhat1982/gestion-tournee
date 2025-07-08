@@ -1,18 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Search, Filter, Eye, CheckCircle, X, Edit, Package } from 'lucide-react';
+import { Plus, Search, Filter, Eye, CheckCircle, X, Edit, Package, RefreshCw } from 'lucide-react';
 import { Order, Customer, PaletteType } from '../types';
 import { useOrderStore } from '../stores/orderStore';
+import { useAuthStore } from '../stores/authStore';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import OrderForm from './OrderForm';
+import { supabase } from '../lib/supabase';
 
 const OrderManagement: React.FC = () => {
   const { orders, customers, paletteTypes, fetchOrders, fetchCustomers, fetchPaletteTypes, updateOrderStatus, deleteOrder } = useOrderStore();
+  const { user, userType } = useAuthStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<Order['status'] | 'all'>('all');
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [generatingSlots, setGeneratingSlots] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -86,16 +90,32 @@ const OrderManagement: React.FC = () => {
   };
 
   const exportToCSV = () => {
-    const headers = ['ID', 'Client', 'Type de palette', 'Quantité', 'Adresse', 'Date', 'Statut'];
-    const csvData = filteredOrders.map(order => [
-      order.id,
-      order.customer?.name || '',
-      order.palette_type?.name || '',
-      order.quantity,
-      order.delivery_address,
-      format(new Date(order.delivery_date), 'dd/MM/yyyy'),
-      getStatusLabel(order.status)
-    ]);
+    const headers = ['ID', 'Client', 'Types de palette', 'Quantités', 'Adresse', 'Date', 'Statut'];
+    const csvData = filteredOrders.map(order => {
+      if (order.order_items && order.order_items.length > 0) {
+        const types = order.order_items.map((item: any) => paletteTypes.find(pt => pt.id === item.palette_type_id)?.name || item.palette_type_id).join(' | ');
+        const quantities = order.order_items.map((item: any) => item.quantity).join(' | ');
+        return [
+          order.id,
+          order.customer?.name || '',
+          types,
+          quantities,
+          order.delivery_address,
+          format(new Date(order.delivery_date), 'dd/MM/yyyy'),
+          getStatusLabel(order.status)
+        ];
+      } else {
+        return [
+          order.id,
+          order.customer?.name || '',
+          order.palette_type?.name || '',
+          order.quantity,
+          order.delivery_address,
+          format(new Date(order.delivery_date), 'dd/MM/yyyy'),
+          getStatusLabel(order.status)
+        ];
+      }
+    });
 
     const csvContent = [headers, ...csvData]
       .map(row => row.map(cell => `"${cell}"`).join(','))
@@ -112,25 +132,93 @@ const OrderManagement: React.FC = () => {
     document.body.removeChild(link);
   };
 
+  const handleOrderCreated = async () => {
+    await fetchOrders();
+    toast.success('Commande créée avec succès !');
+    setShowOrderForm(false);
+  };
+
+  const generateTimeSlots = async () => {
+    setGeneratingSlots(true);
+    try {
+      console.log('Début de la génération des créneaux...');
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      
+      console.log('Token récupéré:', !!accessToken);
+
+      const functionsUrl = import.meta.env.VITE_SUPABASE_FUNCTIONS_API_ORDERS_URL;
+      console.log('URL de la fonction:', functionsUrl);
+      
+      const payload = {
+        start_date: new Date().toISOString().split('T')[0],
+        days_ahead: 30
+      };
+      console.log('Payload envoyé:', payload);
+
+      const response = await fetch(`${functionsUrl}/generate-slots`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken && { 'Authorization': `Bearer ${accessToken}` })
+        },
+        body: JSON.stringify(payload)
+      });
+
+      console.log('Réponse reçue:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Erreur de réponse:', errorData);
+        throw new Error(errorData.error || 'Erreur lors de la génération des créneaux');
+      }
+
+      const result = await response.json();
+      console.log('Résultat de la génération:', result);
+      
+      toast.success('Créneaux horaires générés avec succès !');
+    } catch (error: any) {
+      console.error('Erreur complète:', error);
+      toast.error(error.message || 'Erreur lors de la génération des créneaux');
+    } finally {
+      setGeneratingSlots(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Gestion des commandes</h1>
-          <p className="text-gray-600">Gérez toutes vos commandes de palettes</p>
+          <p className="text-gray-600">Suivez et gérez toutes vos commandes</p>
         </div>
+        
         <div className="flex flex-col sm:flex-row gap-3">
+          {userType === 'admin' && (
+            <button
+              onClick={generateTimeSlots}
+              disabled={generatingSlots}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${generatingSlots ? 'animate-spin' : ''}`} />
+              {generatingSlots ? 'Génération...' : 'Générer créneaux'}
+            </button>
+          )}
+          
           <button
             onClick={exportToCSV}
-            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2"
           >
+            <Eye className="h-4 w-4" />
             Exporter CSV
           </button>
+          
           <button
             onClick={() => setShowOrderForm(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-4 w-4" />
             Nouvelle commande
           </button>
         </div>
@@ -195,7 +283,15 @@ const OrderManagement: React.FC = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredOrders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50">
+                <tr 
+                  key={order.id} 
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={(e) => {
+                    if (!(e.target as HTMLElement).closest('button')) {
+                      setSelectedOrder(order);
+                    }
+                  }}
+                >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -223,12 +319,19 @@ const OrderManagement: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {order.palette_type?.name || 'Type inconnu'}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        Quantité: {order.quantity}
-                      </div>
+                      {order.order_items && order.order_items.length > 0 ? (
+                        <ul className="text-sm text-gray-900">
+                          {order.order_items.map((item: any, idx: number) => (
+                            <li key={idx}>
+                              {item.quantity} × {paletteTypes.find(pt => pt.id === item.palette_type_id)?.name || item.palette_type_id}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="text-sm font-medium text-gray-900">
+                          {order.palette_type?.name || 'Type inconnu'}
+                        </div>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -292,7 +395,15 @@ const OrderManagement: React.FC = () => {
       {/* Orders Cards - Mobile */}
       <div className="lg:hidden space-y-4">
         {filteredOrders.map((order) => (
-          <div key={order.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div 
+            key={order.id} 
+            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:bg-gray-50"
+            onClick={(e) => {
+              if (!(e.target as HTMLElement).closest('button')) {
+                setSelectedOrder(order);
+              }
+            }}
+          >
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -321,9 +432,19 @@ const OrderManagement: React.FC = () => {
               
               <div>
                 <span className="text-xs font-medium text-gray-500">Produit:</span>
-                <p className="text-sm text-gray-900">
-                  {order.quantity} × {order.palette_type?.name || 'Type inconnu'}
-                </p>
+                {order.order_items && order.order_items.length > 0 ? (
+                  <ul className="text-sm text-gray-900">
+                    {order.order_items.map((item: any, idx: number) => (
+                      <li key={idx}>
+                        {item.quantity} × {paletteTypes.find(pt => pt.id === item.palette_type_id)?.name || item.palette_type_id}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-900">
+                    {order.quantity} × {order.palette_type?.name || 'Type inconnu'}
+                  </p>
+                )}
               </div>
               
               <div>
@@ -379,10 +500,7 @@ const OrderManagement: React.FC = () => {
       {showOrderForm && (
         <OrderForm
           onClose={() => setShowOrderForm(false)}
-          onSuccess={() => {
-            setShowOrderForm(false);
-            fetchOrders();
-          }}
+          onSuccess={handleOrderCreated}
         />
       )}
 
@@ -417,8 +535,18 @@ const OrderManagement: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Type de palette</label>
-                    <p className="text-sm text-gray-900">{selectedOrder.palette_type?.name}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Type(s) de palette</label>
+                    {selectedOrder?.order_items && selectedOrder.order_items.length > 0 ? (
+                      <ul className="text-sm text-gray-900">
+                        {selectedOrder.order_items.map((item: any, idx: number) => (
+                          <li key={idx}>
+                            {item.quantity} × {paletteTypes.find(pt => pt.id === item.palette_type_id)?.name || item.palette_type_id}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-gray-900">{selectedOrder?.palette_type?.name}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Quantité</label>

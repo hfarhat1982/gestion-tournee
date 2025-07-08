@@ -17,6 +17,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewChange }) 
     { id: 'dashboard', name: 'Tableau de bord', icon: Package },
     { id: 'orders', name: 'Commandes', icon: FileText },
     { id: 'planning', name: 'Planning', icon: Calendar },
+    { id: 'customers', name: 'Clients', icon: Settings },
     { id: 'api', name: 'API & Paramètres', icon: Settings },
   ];
 

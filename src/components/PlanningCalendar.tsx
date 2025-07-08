@@ -5,7 +5,11 @@ import { useOrderStore } from '../stores/orderStore';
 import { format, startOfWeek, addDays, isSameDay, addWeeks, subWeeks } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-const PlanningCalendar: React.FC = () => {
+interface PlanningCalendarProps {
+  onOrderClick?: (order: Order) => void;
+}
+
+const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ onOrderClick }) => {
   const { orders, fetchOrders } = useOrderStore();
   const [currentWeek, setCurrentWeek] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
 
@@ -185,7 +189,8 @@ const PlanningCalendar: React.FC = () => {
                             {dayOrders.slice(0, 1).map((order) => (
                               <div
                                 key={order.id}
-                                className="bg-white rounded-md p-1 lg:p-2 shadow-sm border text-xs hover:shadow-md transition-shadow"
+                                className="bg-white rounded-md p-1 lg:p-2 shadow-sm border text-xs hover:shadow-md transition-shadow cursor-pointer"
+                                onClick={() => onOrderClick?.(order)}
                               >
                                 <div className="flex items-center justify-between mb-1">
                                   <span className="font-medium text-gray-900 truncate text-xs">

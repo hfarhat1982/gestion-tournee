@@ -48,29 +48,24 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Extract and validate API key
+    // Extract and validate JWT token
     const authHeader = req.headers.get('Authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return new Response('Unauthorized', { 
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
         status: 401, 
-        headers: corsHeaders 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
-    const apiKey = authHeader.replace('Bearer ', '')
+    const token = authHeader.replace('Bearer ', '')
     
-    // Validate API key (for demo purposes, we'll use a simple check)
-    const { data: keyData, error: keyError } = await supabaseClient
-      .from('api_keys')
-      .select('*')
-      .eq('key', apiKey)
-      .eq('active', true)
-      .single()
+    // Verify the JWT token with Supabase
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token)
 
-    if (keyError || !keyData) {
-      return new Response('Invalid API key', { 
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Invalid token' }), { 
         status: 401, 
-        headers: corsHeaders 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
@@ -78,8 +73,31 @@ serve(async (req) => {
     const pathParts = url.pathname.split('/')
     const method = req.method
 
-    // Route handling
-    if (pathParts.length >= 3 && pathParts[2] === 'commandes') {
+    // Handle time slots generation endpoint (doit être avant la logique des commandes)
+    if (pathParts.length >= 3 && pathParts[2] === 'generate-slots' && method === 'POST') {
+      const { start_date, days_ahead } = await req.json();
+      
+      const { data, error } = await supabaseClient
+        .rpc('api_generate_time_slots', {
+          start_date: start_date || new Date().toISOString().split('T')[0],
+          days_ahead: days_ahead || 30
+        });
+
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Route handling - Accept both /commandes and direct POST
+    if ((pathParts.length >= 3 && pathParts[2] === 'commandes') || 
+        (method === 'POST' && pathParts.length >= 2)) {
       const orderId = pathParts[3]
       const action = pathParts[4]
 
@@ -134,14 +152,21 @@ serve(async (req) => {
 
         case 'POST':
           // Create new order
-          const orderData: CreateOrderRequest = await req.json()
+          const orderData = await req.json();
 
-          // Validate required fields
-          if (!orderData.customer_name || !orderData.customer_phone || 
-              !orderData.palette_type_id || !orderData.quantity || 
-              !orderData.delivery_address || !orderData.delivery_date) {
-            return new Response(JSON.stringify({ 
-              error: 'Missing required fields' 
+          // Nouvelle gestion : items multiples
+          const items = orderData.items || [
+            {
+              palette_type_id: orderData.palette_type_id,
+              quantity: orderData.quantity
+            }
+          ];
+
+          // Validation
+          if (!orderData.customer_name || !orderData.customer_phone ||
+              !items.length || !orderData.delivery_address || !orderData.delivery_date) {
+            return new Response(JSON.stringify({
+              error: 'Missing required fields'
             }), {
               status: 400,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -181,24 +206,21 @@ serve(async (req) => {
             customerId = newCustomer.id
           }
 
-          // Create order
+          // Crée la commande (pour compatibilité, on garde le premier item dans orders)
           const { data: newOrder, error: orderError } = await supabaseClient
             .from('orders')
             .insert([{
               customer_id: customerId,
-              palette_type_id: orderData.palette_type_id,
-              quantity: orderData.quantity,
+              palette_type_id: items[0].palette_type_id,
+              quantity: items[0].quantity,
               delivery_address: orderData.delivery_address,
               delivery_date: orderData.delivery_date,
+              time_slot_id: orderData.time_slot_id || null,
               status: 'provisional',
               notes: orderData.notes,
               created_via_api: orderData.created_via_api || true
             }])
-            .select(`
-              *,
-              customer:customers(*),
-              palette_type:palette_types(*)
-            `)
+            .select('*')
             .single()
 
           if (orderError) {
@@ -208,7 +230,61 @@ serve(async (req) => {
             })
           }
 
-          return new Response(JSON.stringify(newOrder), {
+          // Insère les items dans order_items
+          const itemsToInsert = items.map(item => ({
+            order_id: newOrder.id,
+            palette_type_id: item.palette_type_id,
+            quantity: item.quantity
+          }));
+
+          const { error: itemsError } = await supabaseClient
+            .from('order_items')
+            .insert(itemsToInsert)
+
+          if (itemsError) {
+            return new Response(JSON.stringify({ error: itemsError.message }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            })
+          }
+
+          // Met à jour la capacité utilisée du créneau si un créneau est sélectionné
+          if (orderData.time_slot_id) {
+            const { error: slotError } = await supabaseClient
+              .from('time_slots')
+              .update({ 
+                used_capacity: supabaseClient.raw('used_capacity + 1'),
+                status: supabaseClient.raw('CASE WHEN used_capacity + 1 >= capacity THEN \'full\' ELSE status END')
+              })
+              .eq('id', orderData.time_slot_id);
+
+            if (slotError) {
+              console.error('Error updating time slot capacity:', slotError);
+              // On ne fait pas échouer la création de commande pour cette erreur
+            }
+          }
+
+          // Retourne la commande avec ses items
+          const { data: orderWithItems, error: fetchError } = await supabaseClient
+            .from('orders')
+            .select(`
+              *,
+              customer:customers(*),
+              palette_type:palette_types(*),
+              time_slot:time_slots(*),
+              order_items(*)
+            `)
+            .eq('id', newOrder.id)
+            .single()
+
+          if (fetchError) {
+            return new Response(JSON.stringify({ error: fetchError.message }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            })
+          }
+
+          return new Response(JSON.stringify(orderWithItems), {
             status: 201,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           })
@@ -241,6 +317,35 @@ serve(async (req) => {
 
         case 'DELETE':
           if (orderId) {
+            // Récupère d'abord la commande pour connaître le créneau
+            const { data: orderToCancel, error: fetchError } = await supabaseClient
+              .from('orders')
+              .select('time_slot_id')
+              .eq('id', orderId)
+              .single();
+
+            if (fetchError) {
+              return new Response(JSON.stringify({ error: fetchError.message }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              })
+            }
+
+            // Diminue la capacité utilisée du créneau si la commande avait un créneau
+            if (orderToCancel.time_slot_id) {
+              const { error: slotError } = await supabaseClient
+                .from('time_slots')
+                .update({ 
+                  used_capacity: supabaseClient.raw('GREATEST(used_capacity - 1, 0)'),
+                  status: supabaseClient.raw('CASE WHEN used_capacity - 1 < capacity THEN \'available\' ELSE status END')
+                })
+                .eq('id', orderToCancel.time_slot_id);
+
+              if (slotError) {
+                console.error('Error updating time slot capacity:', slotError);
+              }
+            }
+
             // Cancel order
             const { data, error } = await supabaseClient
               .from('orders')
@@ -288,9 +393,9 @@ serve(async (req) => {
       })
     }
 
-    return new Response('Not found', { 
+    return new Response(JSON.stringify({ error: 'Not found' }), { 
       status: 404, 
-      headers: corsHeaders 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
 
   } catch (error) {

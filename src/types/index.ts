@@ -5,6 +5,8 @@ export interface Customer {
   phone: string;
   email?: string;
   created_at: string;
+  type?: string; // 'admin' | 'client'
+  auth_user_id?: string;
 }
 
 export interface PaletteType {
@@ -26,6 +28,15 @@ export interface TimeSlot {
   created_at: string;
 }
 
+export interface OrderItem {
+  id: string;
+  order_id: string;
+  palette_type_id: string;
+  palette_type?: PaletteType;
+  quantity: number;
+  created_at: string;
+}
+
 export interface Order {
   id: string;
   customer_id: string;
@@ -37,6 +48,7 @@ export interface Order {
   delivery_date: string;
   time_slot_id?: string;
   time_slot?: TimeSlot;
+  order_items?: OrderItem[];
   status: 'pending' | 'provisional' | 'confirmed' | 'delivered' | 'cancelled';
   notes?: string;
   created_via_api: boolean;

@@ -4,6 +4,7 @@ import { useOrderStore } from '../stores/orderStore';
 import { Customer, PaletteType } from '../types';
 import toast from 'react-hot-toast';
 import { format, addDays } from 'date-fns';
+import { supabase } from '../lib/supabase';
 
 interface OrderFormProps {
   onClose: () => void;
@@ -11,60 +12,71 @@ interface OrderFormProps {
 }
 
 const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess }) => {
-  const { customers, paletteTypes, createOrder, fetchCustomers, fetchPaletteTypes } = useOrderStore();
+  const { customers, paletteTypes, timeSlots, createOrder, fetchCustomers, fetchPaletteTypes, fetchTimeSlots } = useOrderStore();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     customer_name: '',
     customer_phone: '',
     customer_email: '',
     customer_address: '',
-    palette_type_id: '',
-    quantity: 1,
     delivery_address: '',
     delivery_date: format(addDays(new Date(), 1), 'yyyy-MM-dd'),
     notes: '',
     created_via_api: false,
+    time_slot_id: '',
   });
+  const [items, setItems] = useState([
+    { palette_type_id: '', quantity: 1 }
+  ]);
 
   useEffect(() => {
     fetchCustomers();
     fetchPaletteTypes();
-  }, [fetchCustomers, fetchPaletteTypes]);
+    fetchTimeSlots();
+  }, [fetchCustomers, fetchPaletteTypes, fetchTimeSlots]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // First, create or find customer
-      let customerId = '';
-      const existingCustomer = customers.find(c => 
-        c.phone === formData.customer_phone || c.email === formData.customer_email
-      );
-
-      if (existingCustomer) {
-        customerId = existingCustomer.id;
-      } else {
-        // For demo purposes, we'll use a generated ID
-        customerId = `customer_${Date.now()}`;
-      }
-
-      const orderData = {
-        customer_id: customerId,
-        palette_type_id: formData.palette_type_id,
-        quantity: formData.quantity,
+      // Construction de la payload pour la Deno function
+      const payload = {
+        customer_name: formData.customer_name,
+        customer_phone: formData.customer_phone,
+        customer_email: formData.customer_email,
+        customer_address: formData.customer_address,
         delivery_address: formData.delivery_address,
         delivery_date: formData.delivery_date,
-        status: 'provisional' as const,
         notes: formData.notes,
         created_via_api: formData.created_via_api,
+        time_slot_id: formData.time_slot_id && !formData.time_slot_id.startsWith('demo-') ? formData.time_slot_id : undefined,
+        items: items.filter(item => item.palette_type_id && item.quantity > 0)
       };
 
-      await createOrder(orderData);
+      // Récupère le token d'accès de l'utilisateur connecté
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
+      const functionsUrl = import.meta.env.VITE_SUPABASE_FUNCTIONS_API_ORDERS_URL;
+      const response = await fetch(functionsUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken && { 'Authorization': `Bearer ${accessToken}` })
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de la création de la commande');
+      }
+
       toast.success('Commande créée avec succès !');
       onSuccess();
-    } catch (error) {
-      toast.error('Erreur lors de la création de la commande');
+    } catch (error: any) {
+      toast.error(error.message || 'Erreur lors de la création de la commande');
       console.error('Error creating order:', error);
     } finally {
       setLoading(false);
@@ -77,6 +89,18 @@ const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess }) => {
       ...prev,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
     }));
+  };
+
+  const handleItemChange = (index: number, field: string, value: string | number) => {
+    setItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
+  };
+
+  const handleAddItem = () => {
+    setItems(prev => [...prev, { palette_type_id: '', quantity: 1 }]);
+  };
+
+  const handleRemoveItem = (index: number) => {
+    setItems(prev => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -166,46 +190,52 @@ const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess }) => {
             <div className="border border-gray-200 rounded-lg p-4">
               <div className="flex items-center mb-4">
                 <Package className="h-5 w-5 text-gray-600 mr-2" />
-                <h3 className="text-lg font-medium text-gray-900">Produit</h3>
+                <h3 className="text-lg font-medium text-gray-900">Produits</h3>
               </div>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="palette_type_id" className="block text-sm font-medium text-gray-700 mb-1">
-                    Type de palette *
-                  </label>
-                  <select
-                    id="palette_type_id"
-                    name="palette_type_id"
-                    value={formData.palette_type_id}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  >
-                    <option value="">Sélectionner un type</option>
-                    <option value="euro">Palette Europe (800x1200)</option>
-                    <option value="standard">Palette Standard (1000x1200)</option>
-                    <option value="cp1">Palette CP1 (1000x1200)</option>
-                    <option value="cp2">Palette CP2 (800x1000)</option>
-                    <option value="cp3">Palette CP3 (1000x1200)</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-1">
-                    Quantité *
-                  </label>
-                  <input
-                    type="number"
-                    id="quantity"
-                    name="quantity"
-                    min="1"
-                    value={formData.quantity}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
+              <div className="space-y-4">
+                {items.map((item, idx) => (
+                  <div key={idx} className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-end">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Type de palette *
+                      </label>
+                      <select
+                        value={item.palette_type_id}
+                        onChange={e => handleItemChange(idx, 'palette_type_id', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      >
+                        <option value="">Sélectionner un type</option>
+                        {paletteTypes.map(pt => (
+                          <option key={pt.id} value={pt.id}>{pt.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Quantité *
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={item.quantity}
+                          onChange={e => handleItemChange(idx, 'quantity', Number(e.target.value))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          required
+                        />
+                      </div>
+                      {items.length > 1 && (
+                        <button type="button" onClick={() => handleRemoveItem(idx)} className="text-red-500 hover:text-red-700 px-2 py-1 rounded">
+                          Supprimer
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <button type="button" onClick={handleAddItem} className="mt-2 px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
+                  + Ajouter un type de palette
+                </button>
               </div>
             </div>
 
@@ -247,6 +277,84 @@ const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess }) => {
                     required
                   />
                 </div>
+
+                <div>
+                  <label htmlFor="time_slot_id" className="block text-sm font-medium text-gray-700 mb-1">
+                    Créneau horaire
+                  </label>
+                  <select
+                    id="time_slot_id"
+                    name="time_slot_id"
+                    value={formData.time_slot_id}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Sélectionner un créneau (optionnel)</option>
+                    {timeSlots.length > 0 ? (
+                      (() => {
+                        const filteredSlots = timeSlots.filter(slot =>
+                          format(new Date(slot.date), 'yyyy-MM-dd') === formData.delivery_date &&
+                          slot.status === 'available'
+                        );
+                        
+                        if (filteredSlots.length > 0) {
+                          return filteredSlots.map(slot => {
+                            const availablePlaces = slot.capacity - slot.used_capacity;
+                            const isFull = availablePlaces <= 0;
+                            
+                            return (
+                              <option key={slot.id} value={slot.id} disabled={isFull}>
+                                {format(new Date(`2000-01-01T${slot.start_time}`), 'HH:mm')} - {format(new Date(`2000-01-01T${slot.end_time}`), 'HH:mm')} ({availablePlaces} places disponibles)
+                              </option>
+                            );
+                          });
+                        } else {
+                          return (
+                            <>
+                              <option value="" disabled>Aucun créneau disponible pour le {format(new Date(formData.delivery_date), 'dd/MM/yyyy')}</option>
+                              {/* Créneaux de démonstration */}
+                              {Array.from({ length: 10 }, (_, i) => {
+                                const hour = 8 + i;
+                                const startTime = `${hour.toString().padStart(2, '0')}:00`;
+                                const endTime = `${(hour + 1).toString().padStart(2, '0')}:00`;
+                                return (
+                                  <option key={`demo-${i}`} value={`demo-${i}`} disabled>
+                                    {startTime} - {endTime} (5 places disponibles) - DÉMO
+                                  </option>
+                                );
+                              })}
+                            </>
+                          );
+                        }
+                      })()
+                    ) : (
+                      <>
+                        <option value="" disabled>Aucun créneau trouvé en base de données</option>
+                        {/* Créneaux de démonstration si aucun créneau n'est trouvé */}
+                        {Array.from({ length: 10 }, (_, i) => {
+                          const hour = 8 + i;
+                          const startTime = `${hour.toString().padStart(2, '0')}:00`;
+                          const endTime = `${(hour + 1).toString().padStart(2, '0')}:00`;
+                          return (
+                            <option key={`demo-${i}`} value={`demo-${i}`} disabled>
+                              {startTime} - {endTime} (5 places disponibles) - DÉMO
+                            </option>
+                          );
+                        })}
+                      </>
+                    )}
+                  </select>
+                  {timeSlots.length === 0 && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Aucun créneau trouvé en base de données. Les créneaux de démonstration sont désactivés.
+                    </p>
+                  )}
+                  {timeSlots.length > 0 && timeSlots.filter(slot => slot.date === formData.delivery_date && slot.status === 'available').length === 0 && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Aucun créneau disponible pour cette date. Les créneaux de démonstration sont désactivés.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -264,20 +372,6 @@ const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess }) => {
                 placeholder="Instructions spéciales, horaires préférés, etc."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
-            </div>
-
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="created_via_api"
-                name="created_via_api"
-                checked={formData.created_via_api}
-                onChange={handleInputChange}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="created_via_api" className="ml-2 block text-sm text-gray-700">
-                Commande créée via API n8n (test)
-              </label>
             </div>
 
             {/* Form Actions */}
