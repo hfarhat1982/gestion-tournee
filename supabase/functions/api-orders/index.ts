@@ -250,17 +250,30 @@ serve(async (req) => {
 
           // Met à jour la capacité utilisée du créneau si un créneau est sélectionné
           if (orderData.time_slot_id) {
-            const { error: slotError } = await supabaseClient
+            // Incrémente la capacité utilisée
+            const { data: updatedSlot, error: incrementError } = await supabaseClient
               .from('time_slots')
-              .update({ 
-                used_capacity: sql`used_capacity + 1`,
-                status: sql`CASE WHEN used_capacity + 1 >= capacity THEN 'full' ELSE status END`
-              })
-              .eq('id', orderData.time_slot_id);
+              .select('used_capacity, capacity')
+              .eq('id', orderData.time_slot_id)
+              .single();
 
-            if (slotError) {
-              console.error('Error updating time slot capacity:', slotError);
-              // On ne fait pas échouer la création de commande pour cette erreur
+            if (incrementError) {
+              console.error('Error fetching time slot:', incrementError);
+            } else {
+              const newUsedCapacity = updatedSlot.used_capacity + 1;
+              const newStatus = newUsedCapacity >= updatedSlot.capacity ? 'full' : 'available';
+              
+              const { error: updateError } = await supabaseClient
+                .from('time_slots')
+                .update({ 
+                  used_capacity: newUsedCapacity,
+                  status: newStatus
+                })
+                .eq('id', orderData.time_slot_id);
+
+              if (updateError) {
+                console.error('Error updating time slot capacity:', updateError);
+              }
             }
           }
 
@@ -333,16 +346,30 @@ serve(async (req) => {
 
             // Diminue la capacité utilisée du créneau si la commande avait un créneau
             if (orderToCancel.time_slot_id) {
-              const { error: slotError } = await supabaseClient
+              // Récupère les données actuelles du créneau
+              const { data: currentSlot, error: fetchError } = await supabaseClient
                 .from('time_slots')
-                .update({ 
-                  used_capacity: sql`GREATEST(used_capacity - 1, 0)`,
-                  status: sql`CASE WHEN used_capacity - 1 < capacity THEN 'available' ELSE status END`
-                })
+                .select('used_capacity, capacity')
                 .eq('id', orderToCancel.time_slot_id);
+                .single();
 
-              if (slotError) {
-                console.error('Error updating time slot capacity:', slotError);
+              if (fetchError) {
+                console.error('Error fetching time slot for cancellation:', fetchError);
+              } else {
+                const newUsedCapacity = Math.max(currentSlot.used_capacity - 1, 0);
+                const newStatus = newUsedCapacity < currentSlot.capacity ? 'available' : 'full';
+                
+                const { error: updateError } = await supabaseClient
+                  .from('time_slots')
+                  .update({ 
+                    used_capacity: newUsedCapacity,
+                    status: newStatus
+                  })
+                  .eq('id', orderToCancel.time_slot_id);
+
+                if (updateError) {
+                  console.error('Error updating time slot capacity for cancellation:', updateError);
+                }
               }
             }
 
