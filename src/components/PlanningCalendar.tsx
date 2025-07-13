@@ -192,9 +192,9 @@ const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ onOrderClick }) => 
                                 className="bg-white rounded-md p-1 lg:p-2 shadow-sm border text-xs hover:shadow-md transition-shadow cursor-pointer"
                                 onClick={() => onOrderClick?.(order)}
                               >
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="font-medium text-gray-900 truncate text-xs">
-                                    {order.customer?.name || 'Client'}
+                                <div className="flex items-center justify-center">
+                                  <span className="font-medium text-gray-900 text-xs">
+                                    #{order.id.slice(0, 8)}
                                   </span>
                                   <span className={`px-1 lg:px-1.5 py-0.5 rounded text-xs font-medium ${
                                     order.status === 'provisional' 
@@ -208,16 +208,6 @@ const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ onOrderClick }) => 
                                     {order.status === 'provisional' ? 'P' : 
                                      order.status === 'confirmed' ? 'C' :
                                      order.status === 'delivered' ? 'L' : 'A'}
-                                  </span>
-                                </div>
-                                <div className="flex items-center text-gray-600 mb-1">
-                                  <Package className="h-3 w-3 mr-1 flex-shrink-0" />
-                                  <span className="text-xs">{order.quantity} pal.</span>
-                                </div>
-                                <div className="flex items-center text-gray-600">
-                                  <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
-                                  <span className="truncate text-xs">
-                                    {order.delivery_address.slice(0, 12)}...
                                   </span>
                                 </div>
                               </div>
