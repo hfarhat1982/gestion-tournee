@@ -50,6 +50,7 @@ export interface Order {
   time_slot?: TimeSlot;
   order_items?: OrderItem[];
   status: 'pending' | 'provisional' | 'confirmed' | 'delivered' | 'cancelled';
+  status: 'provisional' | 'confirmed' | 'delivered' | 'cancelled';
   notes?: string;
   created_via_api: boolean;
   created_at: string;

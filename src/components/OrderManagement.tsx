@@ -269,7 +269,6 @@ const OrderManagement: React.FC = () => {
               className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-0"
             >
               <option value="all">Tous les statuts</option>
-              <option value="pending">En attente</option>
               <option value="provisional">Provisoire</option>
               <option value="confirmed">Confirmée</option>
               <option value="delivered">Livrée</option>
@@ -375,6 +374,13 @@ const OrderManagement: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleDeleteOrder(order.id)}
+                        className="text-red-600 hover:text-red-900 p-1 rounded"
+                        title="Annuler"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
                       {order.status === 'provisional' && (
                         <button
                           onClick={() => handleStatusUpdate(order.id, 'confirmed')}
@@ -399,13 +405,6 @@ const OrderManagement: React.FC = () => {
                         title="Voir détails"
                       >
                         <Eye className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteOrder(order.id)}
-                        className="text-red-600 hover:text-red-900 p-1 rounded"
-                        title="Supprimer"
-                      >
-                        <X className="h-4 w-4" />
                       </button>
                     </div>
                   </td>
@@ -482,6 +481,13 @@ const OrderManagement: React.FC = () => {
 
             <div className="flex items-center justify-between pt-3 border-t border-gray-100">
               <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handleDeleteOrder(order.id)}
+                  className="text-red-600 hover:text-red-900 p-2 rounded-lg bg-red-50"
+                  title="Annuler"
+                >
+                  <X className="h-4 w-4" />
+                </button>
                 {order.status === 'provisional' && (
                   <button
                     onClick={() => handleStatusUpdate(order.id, 'confirmed')}
@@ -508,13 +514,6 @@ const OrderManagement: React.FC = () => {
                   <Eye className="h-4 w-4" />
                 </button>
               </div>
-              <button
-                onClick={() => handleDeleteOrder(order.id)}
-                className="text-red-600 hover:text-red-900 p-2 rounded-lg bg-red-50"
-                title="Supprimer"
-              >
-                <X className="h-4 w-4" />
-              </button>
             </div>
           </div>
         ))}
@@ -625,6 +624,43 @@ const OrderManagement: React.FC = () => {
                 )}
 
                 <div className="flex justify-end space-x-3 pt-4 border-t">
+                  {selectedOrder.status !== 'cancelled' && (
+                    <>
+                      <button
+                        onClick={() => {
+                          handleDeleteOrder(selectedOrder.id);
+                          setSelectedOrder(null);
+                        }}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                      >
+                        Annuler la commande
+                      </button>
+                      
+                      {selectedOrder.status === 'provisional' && (
+                        <button
+                          onClick={() => {
+                            handleStatusUpdate(selectedOrder.id, 'confirmed');
+                            setSelectedOrder(null);
+                          }}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                        >
+                          Confirmer
+                        </button>
+                      )}
+                      
+                      {selectedOrder.status === 'confirmed' && (
+                        <button
+                          onClick={() => {
+                            handleStatusUpdate(selectedOrder.id, 'delivered');
+                            setSelectedOrder(null);
+                          }}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        >
+                          Marquer comme livrée
+                        </button>
+                      )}
+                    </>
+                  )}
                   <button
                     onClick={() => setSelectedOrder(null)}
                     className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"

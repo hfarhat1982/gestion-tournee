@@ -31,8 +31,6 @@ function App() {
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
-      case 'pending':
-        return 'bg-gray-100 text-gray-800';
       case 'provisional':
         return 'bg-yellow-100 text-yellow-800';
       case 'confirmed':
@@ -48,8 +46,6 @@ function App() {
 
   const getStatusLabel = (status: Order['status']) => {
     switch (status) {
-      case 'pending':
-        return 'En attente';
       case 'provisional':
         return 'Provisoire';
       case 'confirmed':

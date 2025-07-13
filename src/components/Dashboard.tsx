@@ -34,6 +34,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
         totalOrders: orders.length,
         confirmedToday: todayOrders.filter(order => order.status === 'confirmed').length,
         pendingOrders: orders.filter(order => order.status === 'pending' || order.status === 'provisional').length,
+        pendingOrders: orders.filter(order => order.status === 'provisional').length,
         deliveredToday: todayOrders.filter(order => order.status === 'delivered').length,
         availableSlots: 8 - todayOrders.length,
       });
