@@ -65,6 +65,18 @@ function App() {
         {renderView()}
       </Layout>
       
+      {/* Modal de détail de commande partagé */}
+      {selectedOrder && (
+        <OrderDetailModal
+          order={selectedOrder}
+          onClose={() => setSelectedOrder(null)}
+          onStatusUpdate={handleStatusUpdate}
+          onDeleteOrder={handleDeleteOrder}
+          paletteTypes={paletteTypes}
+          userType={userType}
+        />
+      )}
+      
       <Toaster position="top-right" />
     </>
   );

@@ -534,17 +534,6 @@ const OrderManagement: React.FC = () => {
           onSuccess={handleOrderCreated}
         />
       )}
-
-      {/* Order Details Modal */}
-      {selectedOrder && (
-        <OrderDetailModal
-          order={selectedOrder}
-          onClose={() => setSelectedOrder(null)}
-          onStatusUpdate={handleStatusUpdate}
-          onDeleteOrder={handleDeleteOrder}
-          paletteTypes={paletteTypes}
-        />
-      )}
     </div>
   );
 };

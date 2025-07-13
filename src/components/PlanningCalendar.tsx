@@ -335,16 +335,6 @@ const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ onOrderClick }) => 
         </div>
       </div>
 
-      {/* Order Details Modal */}
-      {selectedOrder && (
-        <OrderDetailModal
-          order={selectedOrder}
-          onClose={() => setSelectedOrder(null)}
-          onStatusUpdate={handleStatusUpdate}
-          onDeleteOrder={handleDeleteOrder}
-          paletteTypes={paletteTypes}
-        />
-      )}
     </div>
   );
 };
