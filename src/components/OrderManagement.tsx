@@ -169,13 +169,33 @@ const OrderManagement: React.FC = () => {
       console.log('Réponse reçue:', response.status, response.statusText);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Erreur de réponse:', errorData);
-        throw new Error(errorData.error || 'Erreur lors de la génération des créneaux');
+        let errorMessage = 'Erreur lors de la génération des créneaux';
+        try {
+          const errorData = await response.json();
+          console.error('Erreur de réponse:', errorData);
+          errorMessage = errorData.error || errorMessage;
+        } catch (jsonError) {
+          // Si la réponse n'est pas du JSON valide, utiliser le texte brut
+          try {
+            const errorText = await response.text();
+            console.error('Erreur de réponse (texte):', errorText);
+            errorMessage = errorText || errorMessage;
+          } catch (textError) {
+            console.error('Impossible de lire la réponse d\'erreur:', textError);
+          }
+        }
+        throw new Error(errorMessage);
       }
 
-      const result = await response.json();
-      console.log('Résultat de la génération:', result);
+      let result;
+      try {
+        result = await response.json();
+        console.log('Résultat de la génération:', result);
+      } catch (jsonError) {
+        console.error('Erreur lors du parsing du résultat:', jsonError);
+        // Si on ne peut pas parser le JSON, considérer que c'est un succès
+        result = { message: 'Créneaux générés avec succès' };
+      }
       
       toast.success('Créneaux horaires générés avec succès !');
     } catch (error: any) {
