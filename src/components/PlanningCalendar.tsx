@@ -37,15 +37,15 @@ const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ onOrderClick }) => 
     return orders.filter(order => {
       if (!isSameDay(new Date(order.delivery_date), date)) return false;
       
-      // Pour la démonstration, on répartit les commandes selon l'heure de création
-      const hour = new Date(order.created_at).getHours();
-      const targetHour = parseInt(slotId);
+      // Si la commande a un créneau horaire assigné, l'utiliser
+      if (order.time_slot && order.time_slot.start_time) {
+        const slotStartHour = parseInt(order.time_slot.start_time.split(':')[0]);
+        const targetHour = parseInt(slotId);
+        return slotStartHour === targetHour;
+      }
       
-      // Répartition basée sur l'ID de la commande pour une distribution cohérente
-      const orderHash = order.id.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-      const assignedHour = 8 + (orderHash % 10); // Répartit entre 8h et 17h
-      
-      return assignedHour === targetHour;
+      // Sinon, ne pas afficher la commande dans les créneaux horaires
+      return false;
     });
   };
 
