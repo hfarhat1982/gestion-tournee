@@ -559,22 +559,32 @@ const OrderManagement: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Type(s) de palette</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Produits commandés</label>
                     {selectedOrder?.order_items && selectedOrder.order_items.length > 0 ? (
-                      <ul className="text-sm text-gray-900">
-                        {selectedOrder.order_items.map((item: any, idx: number) => (
-                          <li key={idx}>
-                            {item.quantity} × {paletteTypes.find(pt => pt.id === item.palette_type_id)?.name || item.palette_type_id}
-                          </li>
+                      <div className="space-y-2">
+                        {selectedOrder.order_items.map((item, index) => (
+                          <div key={item.id || index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                            <span className="text-sm text-gray-900">
+                              {item.palette_type?.name || paletteTypes.find(pt => pt.id === item.palette_type_id)?.name || `Type ${item.palette_type_id}`}
+                            </span>
+                            <span className="text-sm font-medium text-gray-900">
+                              {item.quantity} ×
+                            </span>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     ) : (
-                      <p className="text-sm text-gray-900">{selectedOrder?.palette_type?.name}</p>
+                      <div className="p-2 bg-gray-50 rounded">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-900">
+                            {selectedOrder?.palette_type?.name || 'Type inconnu'}
+                          </span>
+                          <span className="text-sm font-medium text-gray-900">
+                            {selectedOrder.quantity} ×
+                          </span>
+                        </div>
+                      </div>
                     )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Quantité</label>
-                    <p className="text-sm text-gray-900">{selectedOrder.quantity}</p>
                   </div>
                 </div>
 
