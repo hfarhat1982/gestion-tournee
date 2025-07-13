@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Search, Filter, Eye, CheckCircle, X, Edit, Package, RefreshCw } from 'lucide-react';
+import { Plus, Search, Filter, Eye, CheckCircle, X, Edit, Package, RefreshCw, Trash2 } from 'lucide-react';
 import { Order, Customer, PaletteType } from '../types';
 import { useOrderStore } from '../stores/orderStore';
 import { useAuthStore } from '../stores/authStore';
@@ -376,11 +376,18 @@ const OrderManagement: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => handleDeleteOrder(order.id)}
-                        className="text-red-600 hover:text-red-900 p-1 rounded"
+                        onClick={() => handleStatusUpdate(order.id, 'cancelled')}
+                        className="text-orange-600 hover:text-orange-900 p-1 rounded"
                         title="Annuler"
                       >
                         <X className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteOrder(order.id)}
+                        className="text-red-600 hover:text-red-900 p-1 rounded"
+                        title="Supprimer définitivement"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </button>
                       {order.status === 'provisional' && (
                         <button
