@@ -186,7 +186,7 @@ const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ onOrderClick }) => 
                       >
                         {!isWeekendDay && dayOrders.length > 0 && (
                           <div className="space-y-1">
-                            {dayOrders.slice(0, 1).map((order) => (
+                            {dayOrders.slice(0, 2).map((order) => (
                               <div
                                 key={order.id}
                                 className="bg-white rounded-md p-1 lg:p-2 shadow-sm border text-xs hover:shadow-md transition-shadow cursor-pointer"
@@ -222,10 +222,18 @@ const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ onOrderClick }) => 
                                 </div>
                               </div>
                             ))}
-                            {dayOrders.length > 1 && (
-                              <div className="text-xs text-center text-gray-500 bg-gray-100 rounded py-1">
-                                +{dayOrders.length - 1}
-                              </div>
+                            {dayOrders.length > 2 && (
+                              <button 
+                                className="w-full text-xs text-center text-blue-600 bg-blue-50 hover:bg-blue-100 rounded py-1 cursor-pointer transition-colors"
+                                onClick={() => {
+                                  // Affiche la première commande supplémentaire
+                                  if (dayOrders[2] && onOrderClick) {
+                                    onOrderClick(dayOrders[2]);
+                                  }
+                                }}
+                              >
+                                +{dayOrders.length - 2} autres
+                              </button>
                             )}
                           </div>
                         )}
