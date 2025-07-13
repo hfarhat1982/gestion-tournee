@@ -74,7 +74,7 @@ serve(async (req) => {
     const method = req.method
 
     // Handle time slots generation endpoint (doit être avant la logique des commandes)
-    if (pathParts.length >= 3 && pathParts[2] === 'generate-slots' && method === 'POST') {
+    if (pathParts.length >= 5 && pathParts[4] === 'generate-slots' && method === 'POST') {
       const { start_date, days_ahead } = await req.json();
       
       const { data, error } = await supabaseClient
