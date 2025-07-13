@@ -41,9 +41,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess }) => {
 
     try {
       // Filtre les créneaux valides (exclut les créneaux de démonstration)
-      const validTimeSlotId = formData.time_slot_id && !formData.time_slot_id.startsWith('demo-') 
-        ? formData.time_slot_id 
-        : undefined;
+      const validTimeSlotId = formData.time_slot_id || undefined;
 
       // Construction de la payload pour la Deno function
       const payload = {
@@ -295,44 +293,28 @@ const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess }) => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Sélectionner un créneau (optionnel)</option>
-                    {(() => {
-                      const filteredSlots = timeSlots.filter(slot =>
+                    {timeSlots
+                      .filter(slot =>
                         format(new Date(slot.date), 'yyyy-MM-dd') === formData.delivery_date &&
                         slot.status === 'available'
-                      );
-                      
-                      if (filteredSlots.length > 0) {
-                        return filteredSlots.map(slot => {
-                          const availablePlaces = slot.capacity - slot.used_capacity;
-                          const isFull = availablePlaces <= 0;
-                          
-                          return (
-                            <option key={slot.id} value={slot.id} disabled={isFull}>
-                              {format(new Date(`2000-01-01T${slot.start_time}`), 'HH:mm')} - {format(new Date(`2000-01-01T${slot.end_time}`), 'HH:mm')} ({availablePlaces} places disponibles)
-                            </option>
-                          );
-                        });
-                      } else {
-                        // Créneaux de démonstration sélectionnables
-                        return Array.from({ length: 10 }, (_, i) => {
-                          const hour = 8 + i;
-                          const startTime = `${hour.toString().padStart(2, '0')}:00`;
-                          const endTime = `${(hour + 1).toString().padStart(2, '0')}:00`;
-                          return (
-                            <option key={`demo-${i}`} value={`demo-${i}`}>
-                              {startTime} - {endTime} (5 places disponibles) - DÉMO
-                            </option>
-                          );
-                        });
-                      }
-                    })()}
+                      )
+                      .map(slot => {
+                        const availablePlaces = slot.capacity - slot.used_capacity;
+                        const isFull = availablePlaces <= 0;
+                        
+                        return (
+                          <option key={slot.id} value={slot.id} disabled={isFull}>
+                            {format(new Date(`2000-01-01T${slot.start_time}`), 'HH:mm')} - {format(new Date(`2000-01-01T${slot.end_time}`), 'HH:mm')} ({availablePlaces} places disponibles)
+                          </option>
+                        );
+                      })}
                   </select>
-                  {timeSlots.filter(slot => format(new Date(slot.date), 'yyyy-MM-dd') === formData.delivery_date && slot.status === 'available').length === 0 && (
+                  {timeSlots.filter(slot => 
+                    format(new Date(slot.date), 'yyyy-MM-dd') === formData.delivery_date && 
+                    slot.status === 'available'
+                  ).length === 0 && (
                     <p className="text-xs text-gray-500 mt-1">
-                      {timeSlots.length === 0 
-                        ? "Aucun créneau trouvé en base de données. Créneaux de démonstration disponibles."
-                        : "Aucun créneau disponible pour cette date. Créneaux de démonstration disponibles."
-                      }
+                      Aucun créneau disponible pour cette date. Utilisez le bouton "Générer créneaux" pour créer les créneaux horaires.
                     </p>
                   )}
                 </div>
