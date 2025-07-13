@@ -72,8 +72,18 @@ const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess }) => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erreur lors de la création de la commande');
+        const errorText = await response.text();
+        let errorMessage = 'Erreur lors de la création de la commande';
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          // Si le parsing JSON échoue, utilise le texte brut ou un message générique
+          errorMessage = errorText || errorMessage;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       toast.success('Commande créée avec succès !');
