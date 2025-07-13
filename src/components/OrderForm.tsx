@@ -86,8 +86,12 @@ const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess }) => {
           const errorData = JSON.parse(errorText);
           errorMessage = errorData.error || errorMessage;
         } catch {
-          // Si le parsing JSON échoue, utilise le texte brut ou un message générique
-          errorMessage = errorText || errorMessage;
+          // Si le parsing JSON échoue, utilise le texte brut s'il existe
+          if (errorText && errorText.trim()) {
+            errorMessage = `Erreur lors de la création de la commande: ${errorText}`;
+          } else {
+            errorMessage = 'Erreur lors de la création de la commande. Le serveur n\'a pas fourni de détails.';
+          }
         }
         
         throw new Error(errorMessage);
