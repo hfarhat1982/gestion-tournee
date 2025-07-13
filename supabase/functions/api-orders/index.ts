@@ -350,7 +350,7 @@ serve(async (req) => {
               const { data: currentSlot, error: fetchError } = await supabaseClient
                 .from('time_slots')
                 .select('used_capacity, capacity')
-                .eq('id', orderToCancel.time_slot_id);
+                .eq('id', orderToCancel.time_slot_id)
                 .single();
 
               if (fetchError) {
