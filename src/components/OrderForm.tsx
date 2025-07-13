@@ -44,6 +44,13 @@ const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess }) => {
       const validTimeSlotId = formData.time_slot_id || undefined;
 
       // Construction de la payload pour la Deno function
+      const validItems = items.filter(item => item.palette_type_id && item.quantity > 0);
+      
+      // Validation: vérifier qu'il y a au moins un produit valide
+      if (validItems.length === 0) {
+        throw new Error('Veuillez sélectionner au moins un type de palette avec une quantité valide.');
+      }
+
       const payload = {
         customer_name: formData.customer_name,
         customer_phone: formData.customer_phone,
@@ -54,7 +61,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess }) => {
         notes: formData.notes,
         created_via_api: formData.created_via_api,
         time_slot_id: validTimeSlotId,
-        items: items.filter(item => item.palette_type_id && item.quantity > 0)
+        items: validItems
       };
 
       // Récupère le token d'accès de l'utilisateur connecté
