@@ -4,18 +4,22 @@ import { Order } from '../types';
 import { useOrderStore } from '../stores/orderStore';
 import { format, startOfWeek, addDays, isSameDay, addWeeks, subWeeks } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import OrderDetailModal from './OrderDetailModal';
+import toast from 'react-hot-toast';
 
 interface PlanningCalendarProps {
   onOrderClick?: (order: Order) => void;
 }
 
 const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ onOrderClick }) => {
-  const { orders, fetchOrders } = useOrderStore();
+  const { orders, paletteTypes, fetchOrders, fetchPaletteTypes, updateOrderStatus, deleteOrder } = useOrderStore();
   const [currentWeek, setCurrentWeek] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     fetchOrders();
-  }, [fetchOrders]);
+    fetchPaletteTypes();
+  }, [fetchOrders, fetchPaletteTypes]);
 
   // Créneaux horaires de 8h à 18h
   const timeSlots = [
@@ -72,6 +76,32 @@ const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ onOrderClick }) => 
     return day === 0 || day === 6; // Dimanche ou Samedi
   };
 
+  const handleStatusUpdate = async (orderId: string, newStatus: Order['status']) => {
+    try {
+      await updateOrderStatus(orderId, newStatus);
+      toast.success('Statut mis à jour avec succès');
+    } catch (error) {
+      toast.error('Erreur lors de la mise à jour du statut');
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer cette commande ?')) {
+      try {
+        await deleteOrder(orderId);
+        toast.success('Commande supprimée avec succès');
+      } catch (error) {
+        toast.error('Erreur lors de la suppression');
+      }
+    }
+  };
+
+  const handleOrderClick = (order: Order) => {
+    setSelectedOrder(order);
+    if (onOrderClick) {
+      onOrderClick(order);
+    }
+  };
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
@@ -190,7 +220,7 @@ const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ onOrderClick }) => 
                               <div
                                 key={order.id}
                                 className="bg-white rounded-md p-1 lg:p-2 shadow-sm border text-xs hover:shadow-md transition-shadow cursor-pointer"
-                                onClick={() => onOrderClick?.(order)}
+                                onClick={() => handleOrderClick(order)}
                               >
                                 <div className="flex items-center justify-center">
                                   <span className="font-medium text-gray-900 text-xs">
@@ -216,9 +246,8 @@ const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ onOrderClick }) => 
                               <button 
                                 className="w-full text-xs text-center text-blue-600 bg-blue-50 hover:bg-blue-100 rounded py-1 cursor-pointer transition-colors"
                                 onClick={() => {
-                                  // Affiche la première commande supplémentaire
                                   if (dayOrders[2] && onOrderClick) {
-                                    onOrderClick(dayOrders[2]);
+                                    handleOrderClick(dayOrders[2]);
                                   }
                                 }}
                               >
@@ -305,6 +334,17 @@ const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ onOrderClick }) => 
           </div>
         </div>
       </div>
+
+      {/* Order Details Modal */}
+      {selectedOrder && (
+        <OrderDetailModal
+          order={selectedOrder}
+          onClose={() => setSelectedOrder(null)}
+          onStatusUpdate={handleStatusUpdate}
+          onDeleteOrder={handleDeleteOrder}
+          paletteTypes={paletteTypes}
+        />
+      )}
     </div>
   );
 };

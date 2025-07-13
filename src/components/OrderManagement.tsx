@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import OrderForm from './OrderForm';
+import OrderDetailModal from './OrderDetailModal';
 import { supabase } from '../lib/supabase';
 
 const OrderManagement: React.FC = () => {
@@ -529,149 +530,13 @@ const OrderManagement: React.FC = () => {
 
       {/* Order Details Modal */}
       {selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-4 lg:p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900">
-                  Détails de la commande #{selectedOrder.id.slice(0, 8)}
-                </h2>
-                <button
-                  onClick={() => setSelectedOrder(null)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
-                    <p className="text-sm text-gray-900">{selectedOrder.customer?.name}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
-                    <p className="text-sm text-gray-900">{selectedOrder.customer?.phone}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Produits commandés</label>
-                    {selectedOrder?.order_items && selectedOrder.order_items.length > 0 ? (
-                      <div className="space-y-2">
-                        {selectedOrder.order_items.map((item, index) => (
-                          <div key={item.id || index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                            <span className="text-sm text-gray-900">
-                              {item.palette_type?.name || paletteTypes.find(pt => pt.id === item.palette_type_id)?.name || `Type ${item.palette_type_id}`}
-                            </span>
-                            <span className="text-sm font-medium text-gray-900">
-                              {item.quantity} ×
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="p-2 bg-gray-50 rounded">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-900">
-                            {selectedOrder?.palette_type?.name || 'Type inconnu'}
-                          </span>
-                          <span className="text-sm font-medium text-gray-900">
-                            {selectedOrder.quantity} ×
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Adresse de livraison</label>
-                  <p className="text-sm text-gray-900">{selectedOrder.delivery_address}</p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date de livraison</label>
-                    <p className="text-sm text-gray-900">
-                      {format(new Date(selectedOrder.delivery_date), 'dd MMMM yyyy', { locale: fr })}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedOrder.status)}`}>
-                      {getStatusLabel(selectedOrder.status)}
-                    </span>
-                  </div>
-                </div>
-
-                {selectedOrder.time_slot && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Créneau horaire</label>
-                    <p className="text-sm text-gray-900">
-                      {format(new Date(`2000-01-01T${selectedOrder.time_slot.start_time}`), 'HH:mm')} - {format(new Date(`2000-01-01T${selectedOrder.time_slot.end_time}`), 'HH:mm')}
-                    </p>
-                  </div>
-                )}
-
-                {selectedOrder.notes && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                    <p className="text-sm text-gray-900">{selectedOrder.notes}</p>
-                  </div>
-                )}
-
-                <div className="flex justify-end space-x-3 pt-4 border-t">
-                  {selectedOrder.status !== 'cancelled' && (
-                    <>
-                      <button
-                        onClick={() => {
-                          handleDeleteOrder(selectedOrder.id);
-                          setSelectedOrder(null);
-                        }}
-                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                      >
-                        Annuler la commande
-                      </button>
-                      
-                      {selectedOrder.status === 'provisional' && (
-                        <button
-                          onClick={() => {
-                            handleStatusUpdate(selectedOrder.id, 'confirmed');
-                            setSelectedOrder(null);
-                          }}
-                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                        >
-                          Confirmer
-                        </button>
-                      )}
-                      
-                      {selectedOrder.status === 'confirmed' && (
-                        <button
-                          onClick={() => {
-                            handleStatusUpdate(selectedOrder.id, 'delivered');
-                            setSelectedOrder(null);
-                          }}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                        >
-                          Marquer comme livrée
-                        </button>
-                      )}
-                    </>
-                  )}
-                  <button
-                    onClick={() => setSelectedOrder(null)}
-                    className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-                  >
-                    Fermer
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <OrderDetailModal
+          order={selectedOrder}
+          onClose={() => setSelectedOrder(null)}
+          onStatusUpdate={handleStatusUpdate}
+          onDeleteOrder={handleDeleteOrder}
+          paletteTypes={paletteTypes}
+        />
       )}
     </div>
   );
