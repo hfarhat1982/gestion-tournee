@@ -598,6 +598,15 @@ const OrderManagement: React.FC = () => {
                   </div>
                 </div>
 
+                {selectedOrder.time_slot && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Créneau horaire</label>
+                    <p className="text-sm text-gray-900">
+                      {format(new Date(`2000-01-01T${selectedOrder.time_slot.start_time}`), 'HH:mm')} - {format(new Date(`2000-01-01T${selectedOrder.time_slot.end_time}`), 'HH:mm')}
+                    </p>
+                  </div>
+                )}
+
                 {selectedOrder.notes && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
