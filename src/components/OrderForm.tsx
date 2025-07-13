@@ -40,6 +40,11 @@ const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess }) => {
     setLoading(true);
 
     try {
+      // Filtre les créneaux valides (exclut les créneaux de démonstration)
+      const validTimeSlotId = formData.time_slot_id && !formData.time_slot_id.startsWith('demo-') 
+        ? formData.time_slot_id 
+        : undefined;
+
       // Construction de la payload pour la Deno function
       const payload = {
         customer_name: formData.customer_name,
@@ -50,7 +55,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess }) => {
         delivery_date: formData.delivery_date,
         notes: formData.notes,
         created_via_api: formData.created_via_api,
-        time_slot_id: formData.time_slot_id && !formData.time_slot_id.startsWith('demo-') ? formData.time_slot_id : undefined,
+        time_slot_id: validTimeSlotId,
         items: items.filter(item => item.palette_type_id && item.quantity > 0)
       };
 
@@ -290,68 +295,44 @@ const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess }) => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Sélectionner un créneau (optionnel)</option>
-                    {timeSlots.length > 0 ? (
-                      (() => {
-                        const filteredSlots = timeSlots.filter(slot =>
-                          format(new Date(slot.date), 'yyyy-MM-dd') === formData.delivery_date &&
-                          slot.status === 'available'
-                        );
-                        
-                        if (filteredSlots.length > 0) {
-                          return filteredSlots.map(slot => {
-                            const availablePlaces = slot.capacity - slot.used_capacity;
-                            const isFull = availablePlaces <= 0;
-                            
-                            return (
-                              <option key={slot.id} value={slot.id} disabled={isFull}>
-                                {format(new Date(`2000-01-01T${slot.start_time}`), 'HH:mm')} - {format(new Date(`2000-01-01T${slot.end_time}`), 'HH:mm')} ({availablePlaces} places disponibles)
-                              </option>
-                            );
-                          });
-                        } else {
+                    {(() => {
+                      const filteredSlots = timeSlots.filter(slot =>
+                        format(new Date(slot.date), 'yyyy-MM-dd') === formData.delivery_date &&
+                        slot.status === 'available'
+                      );
+                      
+                      if (filteredSlots.length > 0) {
+                        return filteredSlots.map(slot => {
+                          const availablePlaces = slot.capacity - slot.used_capacity;
+                          const isFull = availablePlaces <= 0;
+                          
                           return (
-                            <>
-                              <option value="" disabled>Aucun créneau disponible pour le {format(new Date(formData.delivery_date), 'dd/MM/yyyy')}</option>
-                              {/* Créneaux de démonstration */}
-                              {Array.from({ length: 10 }, (_, i) => {
-                                const hour = 8 + i;
-                                const startTime = `${hour.toString().padStart(2, '0')}:00`;
-                                const endTime = `${(hour + 1).toString().padStart(2, '0')}:00`;
-                                return (
-                                  <option key={`demo-${i}`} value={`demo-${i}`} disabled>
-                                    {startTime} - {endTime} (5 places disponibles) - DÉMO
-                                  </option>
-                                );
-                              })}
-                            </>
+                            <option key={slot.id} value={slot.id} disabled={isFull}>
+                              {format(new Date(`2000-01-01T${slot.start_time}`), 'HH:mm')} - {format(new Date(`2000-01-01T${slot.end_time}`), 'HH:mm')} ({availablePlaces} places disponibles)
+                            </option>
                           );
-                        }
-                      })()
-                    ) : (
-                      <>
-                        <option value="" disabled>Aucun créneau trouvé en base de données</option>
-                        {/* Créneaux de démonstration si aucun créneau n'est trouvé */}
-                        {Array.from({ length: 10 }, (_, i) => {
+                        });
+                      } else {
+                        // Créneaux de démonstration sélectionnables
+                        return Array.from({ length: 10 }, (_, i) => {
                           const hour = 8 + i;
                           const startTime = `${hour.toString().padStart(2, '0')}:00`;
                           const endTime = `${(hour + 1).toString().padStart(2, '0')}:00`;
                           return (
-                            <option key={`demo-${i}`} value={`demo-${i}`} disabled>
+                            <option key={`demo-${i}`} value={`demo-${i}`}>
                               {startTime} - {endTime} (5 places disponibles) - DÉMO
                             </option>
                           );
-                        })}
-                      </>
-                    )}
+                        });
+                      }
+                    })()}
                   </select>
-                  {timeSlots.length === 0 && (
+                  {timeSlots.filter(slot => format(new Date(slot.date), 'yyyy-MM-dd') === formData.delivery_date && slot.status === 'available').length === 0 && (
                     <p className="text-xs text-gray-500 mt-1">
-                      Aucun créneau trouvé en base de données. Les créneaux de démonstration sont désactivés.
-                    </p>
-                  )}
-                  {timeSlots.length > 0 && timeSlots.filter(slot => slot.date === formData.delivery_date && slot.status === 'available').length === 0 && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Aucun créneau disponible pour cette date. Les créneaux de démonstration sont désactivés.
+                      {timeSlots.length === 0 
+                        ? "Aucun créneau trouvé en base de données. Créneaux de démonstration disponibles."
+                        : "Aucun créneau disponible pour cette date. Créneaux de démonstration disponibles."
+                      }
                     </p>
                   )}
                 </div>
