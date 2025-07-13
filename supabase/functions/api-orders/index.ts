@@ -162,9 +162,25 @@ serve(async (req) => {
             }
           ];
 
+          // Find the first valid item
+          const validItems = items.filter(item => 
+            item.palette_type_id && 
+            item.palette_type_id.trim() !== '' && 
+            item.quantity > 0
+          );
+
+          if (validItems.length === 0) {
+            return new Response(JSON.stringify({
+              error: 'Aucun produit valide trouvé dans la commande'
+            }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            })
+          }
+
           // Validation
           if (!orderData.customer_name || !orderData.customer_phone ||
-              !items.length || !orderData.delivery_address || !orderData.delivery_date) {
+              !validItems.length || !orderData.delivery_address || !orderData.delivery_date) {
             return new Response(JSON.stringify({
               error: 'Missing required fields'
             }), {
@@ -211,8 +227,8 @@ serve(async (req) => {
             .from('orders')
             .insert([{
               customer_id: customerId,
-              palette_type_id: items[0].palette_type_id,
-              quantity: items[0].quantity,
+              palette_type_id: validItems[0].palette_type_id,
+              quantity: validItems[0].quantity,
               delivery_address: orderData.delivery_address,
               delivery_date: orderData.delivery_date,
               time_slot_id: orderData.time_slot_id || null,
@@ -231,7 +247,7 @@ serve(async (req) => {
           }
 
           // Insère les items dans order_items
-          const itemsToInsert = items.map(item => ({
+          const itemsToInsert = validItems.map(item => ({
             order_id: newOrder.id,
             palette_type_id: item.palette_type_id,
             quantity: item.quantity
