@@ -171,29 +171,38 @@ const OrderManagement: React.FC = () => {
       if (!response.ok) {
         let errorMessage = 'Erreur lors de la génération des créneaux';
         try {
-          const errorData = await response.json();
-          console.error('Erreur de réponse:', errorData);
-          errorMessage = errorData.error || errorMessage;
-        } catch (jsonError) {
-          // Si la réponse n'est pas du JSON valide, utiliser le texte brut
+          const responseText = await response.text();
+          console.error('Erreur de réponse (texte brut):', responseText);
+          
+          // Tenter de parser comme JSON
           try {
-            const errorText = await response.text();
-            console.error('Erreur de réponse (texte):', errorText);
-            errorMessage = errorText || errorMessage;
-          } catch (textError) {
-            console.error('Impossible de lire la réponse d\'erreur:', textError);
+            const errorData = JSON.parse(responseText);
+            errorMessage = errorData.error || errorMessage;
+          } catch (jsonParseError) {
+            // Si ce n'est pas du JSON valide, utiliser le texte brut
+            errorMessage = responseText || errorMessage;
           }
+        } catch (readError) {
+          console.error('Impossible de lire la réponse d\'erreur:', readError);
         }
         throw new Error(errorMessage);
       }
 
       let result;
       try {
-        result = await response.json();
-        console.log('Résultat de la génération:', result);
-      } catch (jsonError) {
-        console.error('Erreur lors du parsing du résultat:', jsonError);
-        // Si on ne peut pas parser le JSON, considérer que c'est un succès
+        const responseText = await response.text();
+        console.log('Réponse brute:', responseText);
+        
+        try {
+          result = JSON.parse(responseText);
+          console.log('Résultat de la génération:', result);
+        } catch (jsonParseError) {
+          console.error('Erreur lors du parsing du résultat:', jsonParseError);
+          // Si on ne peut pas parser le JSON, considérer que c'est un succès
+          result = { message: 'Créneaux générés avec succès' };
+        }
+      } catch (readError) {
+        console.error('Erreur lors de la lecture de la réponse:', readError);
         result = { message: 'Créneaux générés avec succès' };
       }
       
