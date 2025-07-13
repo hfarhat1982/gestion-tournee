@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0'
+import { createClient, sql } from 'https://esm.sh/@supabase/supabase-js@2.43.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -253,8 +253,8 @@ serve(async (req) => {
             const { error: slotError } = await supabaseClient
               .from('time_slots')
               .update({ 
-                used_capacity: supabaseClient.raw('used_capacity + 1'),
-                status: supabaseClient.raw('CASE WHEN used_capacity + 1 >= capacity THEN \'full\' ELSE status END')
+                used_capacity: sql`used_capacity + 1`,
+                status: sql`CASE WHEN used_capacity + 1 >= capacity THEN 'full' ELSE status END`
               })
               .eq('id', orderData.time_slot_id);
 
@@ -336,8 +336,8 @@ serve(async (req) => {
               const { error: slotError } = await supabaseClient
                 .from('time_slots')
                 .update({ 
-                  used_capacity: supabaseClient.raw('GREATEST(used_capacity - 1, 0)'),
-                  status: supabaseClient.raw('CASE WHEN used_capacity - 1 < capacity THEN \'available\' ELSE status END')
+                  used_capacity: sql`GREATEST(used_capacity - 1, 0)`,
+                  status: sql`CASE WHEN used_capacity - 1 < capacity THEN 'available' ELSE status END`
                 })
                 .eq('id', orderToCancel.time_slot_id);
 
