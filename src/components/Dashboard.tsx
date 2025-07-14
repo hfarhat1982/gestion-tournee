@@ -7,9 +7,10 @@ import { fr } from 'date-fns/locale';
 
 interface DashboardProps {
   onViewChange: (view: string) => void;
+  onOrderClick?: (order: Order) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onViewChange, onOrderClick }) => {
   const { orders, fetchOrders } = useOrderStore();
   const [stats, setStats] = useState<DashboardStats>({
     totalOrders: 0,
