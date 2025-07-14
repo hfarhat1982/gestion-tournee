@@ -178,7 +178,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
                   className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
                   onClick={() => onOrderClick && onOrderClick(order)}
                 >
-                  onClick={() => onOrderClick && onOrderClick(order)}
+                  <div className="flex items-center min-w-0 flex-1">
+                    <div className="flex-shrink-0 mr-3">
                       <Package className="h-4 w-4 lg:h-5 lg:w-5 text-blue-600" />
                     </div>
                     <div className="min-w-0 flex-1">
