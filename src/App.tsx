@@ -10,16 +10,26 @@ import ApiSettings from './components/ApiSettings';
 import CustomerManagement from './components/CustomerManagement';
 import Login from './components/Auth/Login';
 import Signup from './components/Auth/Signup';
+import OrderDetailModal from './components/OrderDetailModal';
+import { Order } from './types';
 
 function App() {
-  const { user, loading, initialize } = useAuthStore();
+  const { user, loading, initialize, userType } = useAuthStore();
   const [currentView, setCurrentView] = useState('dashboard');
   const [authView, setAuthView] = useState<'login' | 'signup'>('login');
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     initialize();
   }, [initialize]);
 
+  const handleOrderClick = (order: Order) => {
+    setSelectedOrder(order);
+  };
+
+  const handleCloseOrderModal = () => {
+    setSelectedOrder(null);
+  };
 
   if (loading) {
     return (
@@ -44,7 +54,7 @@ function App() {
   const renderView = () => {
     switch (currentView) {
       case 'dashboard':
-        return <Dashboard onViewChange={setCurrentView} />;
+        return <Dashboard onViewChange={setCurrentView} onOrderClick={handleOrderClick} />;
       case 'orders':
         return <OrderManagement />;
       case 'planning':
@@ -54,7 +64,7 @@ function App() {
       case 'api':
         return <ApiSettings />;
       default:
-        return <Dashboard onViewChange={setCurrentView} />;
+        return <Dashboard onViewChange={setCurrentView} onOrderClick={handleOrderClick} />;
     }
   };
 
@@ -63,6 +73,27 @@ function App() {
       <Layout currentView={currentView} onViewChange={setCurrentView}>
         {renderView()}
       </Layout>
+      
+      {/* Modal de détail de commande partagé */}
+      {selectedOrder && (
+        <OrderDetailModal
+          order={selectedOrder}
+          onClose={handleCloseOrderModal}
+          onStatusUpdate={async (orderId: string, newStatus: Order['status']) => {
+            // Cette fonction sera gérée par les stores individuels
+            console.log('Status update:', orderId, newStatus);
+            handleCloseOrderModal();
+          }}
+          onDeleteOrder={async (orderId: string) => {
+            // Cette fonction sera gérée par les stores individuels
+            console.log('Delete order:', orderId);
+            handleCloseOrderModal();
+          }}
+          paletteTypes={[]}
+          userType={userType}
+        />
+      )}
+      
       <Toaster position="top-right" />
     </>
   );
