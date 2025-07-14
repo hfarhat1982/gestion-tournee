@@ -173,9 +173,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
             </div>
             <div className="space-y-3 lg:space-y-4">
               {recentOrders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                  <div className="flex items-center space-x-3 min-w-0 flex-1">
+                <div 
+                  key={order.id} 
                   className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
+                  onClick={() => onOrderClick && onOrderClick(order)}
+                >
                   onClick={() => onOrderClick && onOrderClick(order)}
                       <Package className="h-4 w-4 lg:h-5 lg:w-5 text-blue-600" />
                     </div>
