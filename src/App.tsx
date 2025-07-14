@@ -37,7 +37,6 @@ function App() {
           <button onClick={() => setAuthView('signup')} className={`px-4 py-2 rounded ${authView === 'signup' ? 'bg-blue-600 text-white' : 'bg-white border'}`}>Créer un compte</button>
         </div>
         {authView === 'login' ? <Login /> : <Signup />}
-        <Toaster position="top-right" />
       </div>
     );
   }
@@ -64,19 +63,6 @@ function App() {
       <Layout currentView={currentView} onViewChange={setCurrentView}>
         {renderView()}
       </Layout>
-      
-      {/* Modal de détail de commande partagé */}
-      {selectedOrder && (
-        <OrderDetailModal
-          order={selectedOrder}
-          onClose={() => setSelectedOrder(null)}
-          onStatusUpdate={handleStatusUpdate}
-          onDeleteOrder={handleDeleteOrder}
-          paletteTypes={paletteTypes}
-          userType={userType}
-        />
-      )}
-      
       <Toaster position="top-right" />
     </>
   );
