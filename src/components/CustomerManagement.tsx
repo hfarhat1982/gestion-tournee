@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '../store/authStore';
+import { Plus, Search, Edit, Trash2, Mail } from 'lucide-react';
 
 interface Customer {
   id: string;
@@ -209,77 +211,6 @@ const CustomerManagement: React.FC = () => {
               </tbody>
             </table>
           </div>
-      {showModal && (
-          {/* Mobile Cards */}
-          <div className="lg:hidden space-y-4">
-            {filteredCustomers.map(c => (
-              <div key={c.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-                <div className="space-y-3">
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900">{c.name}</h3>
-                    <p className="text-sm text-gray-600">{c.phone}</p>
-                  </div>
-                  {c.email && (
-                    <div>
-                      <span className="text-xs font-medium text-gray-500">Email:</span>
-                      <p className="text-sm text-gray-900">{c.email}</p>
-                    </div>
-                  )}
-                  {c.address && (
-                    <div>
-                      <span className="text-xs font-medium text-gray-500">Adresse:</span>
-                      <p className="text-sm text-gray-900">{c.address}</p>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => handleEdit(c)}
-                        className="text-blue-600 hover:text-blue-900 p-2 rounded-lg bg-blue-50"
-                        title="Modifier"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      {userType === 'admin' && (
-                        <button
-                          onClick={() => handleDelete(c.id)}
-                          className="text-red-600 hover:text-red-900 p-2 rounded-lg bg-red-50"
-                          title="Supprimer"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      )}
-                      {c.email && userType === 'admin' && (
-                        <button
-                          onClick={() => handleInvite(c)}
-                          className="text-green-600 hover:text-green-900 p-2 rounded-lg bg-green-50"
-                          title="Inviter"
-                        >
-                          <Mail className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full">
-            <div className="p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">
-                {isEdit ? 'Modifier' : 'Ajouter'} un client
-              </h2>
-              <form onSubmit={handleModalSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
-                  <input
-                    type="text"
-    </div>
-  );
-};
 
           {/* Mobile Cards */}
           <div className="lg:hidden space-y-4">
@@ -337,5 +268,75 @@ const CustomerManagement: React.FC = () => {
           </div>
         </>
       )}
+
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-md w-full">
+            <div className="p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-6">
+                {isEdit ? 'Modifier' : 'Ajouter'} un client
+              </h2>
+              <form onSubmit={handleModalSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editCustomer.name}
+                    onChange={(e) => setEditCustomer({ ...editCustomer, name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone *</label>
+                  <input
+                    type="tel"
+                    required
+                    value={editCustomer.phone}
+                    onChange={(e) => setEditCustomer({ ...editCustomer, phone: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={editCustomer.email}
+                    onChange={(e) => setEditCustomer({ ...editCustomer, email: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
+                  <textarea
+                    value={editCustomer.address}
+                    onChange={(e) => setEditCustomer({ ...editCustomer, address: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    rows={3}
+                  />
+                </div>
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    {isEdit ? 'Modifier' : 'Ajouter'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default CustomerManagement; 
