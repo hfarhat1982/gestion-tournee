@@ -10,6 +10,7 @@ interface OrderDetailModalProps {
   onStatusUpdate: (orderId: string, newStatus: Order['status']) => void;
   onDeleteOrder: (orderId: string) => void;
   paletteTypes: any[];
+  userType?: string;
 }
 
 const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
@@ -17,7 +18,8 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   onClose,
   onStatusUpdate,
   onDeleteOrder,
-  paletteTypes
+  paletteTypes,
+  userType
 }) => {
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
