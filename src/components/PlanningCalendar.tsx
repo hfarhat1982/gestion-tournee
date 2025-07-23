@@ -98,10 +98,8 @@ const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ onOrderClick }) => 
 
   const handleOrderClick = (order: Order) => {
     setSelectedOrder(order);
-    if (onOrderClick) {
-      onOrderClick(order);
-    }
   };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
@@ -335,6 +333,17 @@ const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ onOrderClick }) => 
         </div>
       </div>
 
+      {/* Modal de détail de commande */}
+      {selectedOrder && (
+        <OrderDetailModal
+          order={selectedOrder}
+          onClose={() => setSelectedOrder(null)}
+          onStatusUpdate={handleStatusUpdate}
+          onDeleteOrder={handleDeleteOrder}
+          paletteTypes={paletteTypes}
+          userType="admin"
+        />
+      )}
     </div>
   );
 };

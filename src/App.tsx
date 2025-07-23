@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { useAuthStore } from './stores/authStore';
+import { useOrderStore } from './stores/orderStore';
 import LoginForm from './components/LoginForm';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
@@ -80,16 +82,28 @@ function App() {
           order={selectedOrder}
           onClose={handleCloseOrderModal}
           onStatusUpdate={async (orderId: string, newStatus: Order['status']) => {
-            // Cette fonction sera gérée par les stores individuels
-            console.log('Status update:', orderId, newStatus);
+            try {
+              const { updateOrderStatus } = useOrderStore.getState();
+              await updateOrderStatus(orderId, newStatus);
+              toast.success('Statut mis à jour avec succès');
+            } catch (error) {
+              toast.error('Erreur lors de la mise à jour du statut');
+            }
             handleCloseOrderModal();
           }}
           onDeleteOrder={async (orderId: string) => {
-            // Cette fonction sera gérée par les stores individuels
-            console.log('Delete order:', orderId);
+            if (window.confirm('Êtes-vous sûr de vouloir supprimer cette commande ?')) {
+              try {
+                const { deleteOrder } = useOrderStore.getState();
+                await deleteOrder(orderId);
+                toast.success('Commande supprimée avec succès');
+              } catch (error) {
+                toast.error('Erreur lors de la suppression');
+              }
+            }
             handleCloseOrderModal();
           }}
-          paletteTypes={[]}
+          paletteTypes={useOrderStore.getState().paletteTypes}
           userType={userType}
         />
       )}
