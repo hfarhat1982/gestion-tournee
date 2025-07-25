@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Search, Filter, Package, RefreshCw } from 'lucide-react';
+import { Plus, Search, Filter, Package, RefreshCw, Eye } from 'lucide-react';
 import { Order, Customer, PaletteType } from '../types';
 import { useOrderStore } from '../stores/orderStore';
 import { useAuthStore } from '../stores/authStore';
