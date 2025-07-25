@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Search, Filter, Package, RefreshCw, Eye } from 'lucide-react';
+import { Plus, Search, Filter, Package, RefreshCw, Eye, Edit } from 'lucide-react';
 import { Order, Customer, PaletteType } from '../types';
 import { useOrderStore } from '../stores/orderStore';
 import { useAuthStore } from '../stores/authStore';
@@ -11,19 +11,21 @@ import OrderDetailModal from './OrderDetailModal';
 import { supabase } from '../lib/supabase';
 
 const OrderManagement: React.FC = () => {
-  const { orders, customers, paletteTypes, fetchOrders, fetchCustomers, fetchPaletteTypes, updateOrderStatus, deleteOrder } = useOrderStore();
+  const { orders, customers, paletteTypes, timeSlots, fetchOrders, fetchCustomers, fetchPaletteTypes, fetchTimeSlots, updateOrderStatus, deleteOrder } = useOrderStore();
   const { user, userType } = useAuthStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<Order['status'] | 'all'>('all');
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [generatingSlots, setGeneratingSlots] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     fetchOrders();
     fetchCustomers();
     fetchPaletteTypes();
-  }, [fetchOrders, fetchCustomers, fetchPaletteTypes]);
+    fetchTimeSlots();
+  }, [fetchOrders, fetchCustomers, fetchPaletteTypes, fetchTimeSlots]);
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
@@ -142,69 +144,30 @@ const OrderManagement: React.FC = () => {
   const generateTimeSlots = async () => {
     setGeneratingSlots(true);
     try {
-      console.log('Début de la génération des créneaux...');
+      // Utilise la fonction PostgreSQL directement
+      const startDate = new Date().toISOString().split('T')[0];
+      const endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-      
-      console.log('Token récupéré:', !!accessToken);
-
-      const functionsUrl = import.meta.env.VITE_SUPABASE_FUNCTIONS_API_ORDERS_URL;
-      console.log('URL de la fonction:', functionsUrl);
-      
-      const payload = {
-        start_date: new Date().toISOString().split('T')[0],
-        days_ahead: 30
-      };
-      console.log('Payload envoyé:', payload);
-
-      const response = await fetch(`${functionsUrl}/generate-slots`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(accessToken && { 'Authorization': `Bearer ${accessToken}` })
-        },
-        body: JSON.stringify(payload)
+      const { data, error } = await supabase.rpc('generate_time_slots_for_range', {
+        start_date: startDate,
+        end_date: endDate,
+        slot_capacity: 5
       });
 
-      console.log('Réponse reçue:', response.status, response.statusText);
-
-      const responseText = await response.text();
-      console.log('Réponse brute:', responseText);
-
-      if (!response.ok) {
-        let errorMessage = 'Erreur lors de la génération des créneaux';
-        
-        if (responseText.trim()) {
-          try {
-            const errorData = JSON.parse(responseText);
-            errorMessage = errorData.error || errorMessage;
-          } catch (jsonParseError) {
-            errorMessage = responseText;
-          }
-        } else {
-          errorMessage = `Erreur HTTP ${response.status}: ${response.statusText}`;
-        }
-        
-        throw new Error(errorMessage);
+      if (error) {
+        throw new Error(error.message);
       }
 
-      let result;
-      if (responseText.trim()) {
-        try {
-          result = JSON.parse(responseText);
-          console.log('Résultat de la génération:', result);
-        } catch (jsonParseError) {
-          console.error('Erreur lors du parsing du résultat:', jsonParseError);
-          result = { message: 'Créneaux générés avec succès' };
-        }
+      const result = data?.[0];
+      if (result) {
+        toast.success(`${result.slots_created} créneaux générés pour la période ${result.date_range}`);
       } else {
-        result = { message: 'Créneaux générés avec succès' };
+        toast.success('Créneaux horaires générés avec succès !');
       }
       
-      toast.success('Créneaux horaires générés avec succès !');
+      // Rafraîchit les créneaux dans le store
+      await fetchTimeSlots();
     } catch (error: any) {
-      console.error('Erreur complète:', error);
       toast.error(error.message || 'Erreur lors de la génération des créneaux');
     } finally {
       setGeneratingSlots(false);
@@ -365,6 +328,18 @@ const OrderManagement: React.FC = () => {
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
                       {getStatusLabel(order.status)}
                     </span>
+                    {(userType === 'admin' || userType === 'collaborateur') && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingOrder(order);
+                        }}
+                        className="ml-2 p-1 text-blue-600 hover:text-blue-800"
+                        title="Modifier"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -432,6 +407,21 @@ const OrderManagement: React.FC = () => {
                 <p className="text-xs text-gray-500 truncate">{order.delivery_address}</p>
               </div>
             </div>
+            
+            {(userType === 'admin' || userType === 'collaborateur') && (
+              <div className="flex justify-end mt-3">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingOrder(order);
+                  }}
+                  className="p-2 text-blue-600 hover:text-blue-800 bg-blue-50 rounded-lg"
+                  title="Modifier"
+                >
+                  <Edit className="h-4 w-4" />
+                </button>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -441,6 +431,19 @@ const OrderManagement: React.FC = () => {
         <OrderForm
           onClose={() => setShowOrderForm(false)}
           onSuccess={handleOrderCreated}
+        />
+      )}
+
+      {/* Edit Order Form Modal */}
+      {editingOrder && (
+        <OrderForm
+          onClose={() => setEditingOrder(null)}
+          onSuccess={async () => {
+            await fetchOrders();
+            toast.success('Commande modifiée avec succès !');
+            setEditingOrder(null);
+          }}
+          editOrder={editingOrder}
         />
       )}
 

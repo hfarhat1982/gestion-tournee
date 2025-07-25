@@ -10,26 +10,13 @@ import { useAuthStore } from '../stores/authStore';
 interface OrderFormProps {
   onClose: () => void;
   onSuccess: () => void;
+  editOrder?: Order;
 }
 
-const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess }) => {
+const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess, editOrder }) => {
   const { customers, paletteTypes, timeSlots, createOrder, fetchCustomers, fetchPaletteTypes, fetchTimeSlots } = useOrderStore();
   const { user, userType } = useAuthStore();
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    customer_name: userType === 'client' ? '' : '',
-    customer_phone: userType === 'client' ? '' : '',
-    customer_email: userType === 'client' ? user?.email || '' : '',
-    customer_address: userType === 'client' ? '' : '',
-    delivery_address: '',
-    delivery_date: format(addDays(new Date(), 1), 'yyyy-MM-dd'),
-    notes: '',
-    created_via_api: false,
-    time_slot_id: '',
-  });
-  const [items, setItems] = useState([
-    { palette_type_id: '', quantity: 1 }
-  ]);
 
   // Récupère les infos du client connecté
   useEffect(() => {
