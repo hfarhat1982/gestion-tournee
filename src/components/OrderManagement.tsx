@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Search, Filter, Package, RefreshCw, Eye, Edit } from 'lucide-react';
+import { Plus, Search, Filter, Package, Eye, Edit } from 'lucide-react';
 import { Order, Customer, PaletteType } from '../types';
 import { useOrderStore } from '../stores/orderStore';
 import { useAuthStore } from '../stores/authStore';
@@ -17,7 +17,6 @@ const OrderManagement: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<Order['status'] | 'all'>('all');
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [generatingSlots, setGeneratingSlots] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
   useEffect(() => {
@@ -141,39 +140,6 @@ const OrderManagement: React.FC = () => {
     setShowOrderForm(false);
   };
 
-  const generateTimeSlots = async () => {
-    setGeneratingSlots(true);
-    try {
-      // Utilise la fonction PostgreSQL directement
-      const startDate = new Date().toISOString().split('T')[0];
-      const endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      
-      const { data, error } = await supabase.rpc('generate_time_slots_for_range', {
-        p_start_date: startDate,
-        p_end_date: endDate,
-        p_slot_capacity: 5
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      const result = data?.[0];
-      if (result) {
-        toast.success(`${result.slots_created} créneaux générés pour la période ${result.date_range}`);
-      } else {
-        toast.success('Créneaux horaires générés avec succès !');
-      }
-      
-      // Rafraîchit les créneaux dans le store
-      await fetchTimeSlots();
-    } catch (error: any) {
-      toast.error(error.message || 'Erreur lors de la génération des créneaux');
-    } finally {
-      setGeneratingSlots(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-6">
@@ -183,17 +149,6 @@ const OrderManagement: React.FC = () => {
         </div>
         
         <div className="flex flex-col sm:flex-row gap-3">
-          {userType === 'admin' && (
-            <button
-              onClick={generateTimeSlots}
-              disabled={generatingSlots}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              <RefreshCw className={`h-4 w-4 ${generatingSlots ? 'animate-spin' : ''}`} />
-              {generatingSlots ? 'Génération...' : 'Générer créneaux'}
-            </button>
-          )}
-          
           <button
             onClick={exportToCSV}
             className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2"
