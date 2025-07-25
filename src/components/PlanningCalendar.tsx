@@ -6,6 +6,7 @@ import { format, startOfWeek, addDays, isSameDay, addWeeks, subWeeks } from 'dat
 import { fr } from 'date-fns/locale';
 import OrderDetailModal from './OrderDetailModal';
 import toast from 'react-hot-toast';
+import OrderForm from './OrderForm';
 
 interface PlanningCalendarProps {
   onOrderClick?: (order: Order) => void;
@@ -15,6 +16,7 @@ const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ onOrderClick }) => 
   const { orders, paletteTypes, fetchOrders, fetchPaletteTypes, updateOrderStatus, deleteOrder } = useOrderStore();
   const [currentWeek, setCurrentWeek] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     fetchOrders();
@@ -214,13 +216,13 @@ const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ onOrderClick }) => 
                       >
                         {!isWeekendDay && dayOrders.length > 0 && (
                           <div className="space-y-1">
-                            {dayOrders.slice(0, 2).map((order) => (
+                            {dayOrders.slice(0, 3).map((order) => (
                               <div
                                 key={order.id}
                                 className="bg-white rounded-md p-1 lg:p-2 shadow-sm border text-xs hover:shadow-md transition-shadow cursor-pointer"
                                 onClick={() => handleOrderClick(order)}
                               >
-                                <div className="flex items-center justify-center">
+                                <div className="flex items-center justify-between">
                                   <span className="font-medium text-gray-900 text-xs">
                                     #{order.id.slice(0, 8)}
                                   </span>
@@ -238,18 +240,21 @@ const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ onOrderClick }) => 
                                      order.status === 'delivered' ? 'L' : 'A'}
                                   </span>
                                 </div>
+                                <div className="text-xs text-gray-600 mt-1 truncate">
+                                  {order.customer?.name}
+                                </div>
                               </div>
                             ))}
-                            {dayOrders.length > 2 && (
+                            {dayOrders.length > 3 && (
                               <button 
                                 className="w-full text-xs text-center text-blue-600 bg-blue-50 hover:bg-blue-100 rounded py-1 cursor-pointer transition-colors"
                                 onClick={() => {
-                                  if (dayOrders[2] && onOrderClick) {
-                                    handleOrderClick(dayOrders[2]);
+                                  if (dayOrders[3] && onOrderClick) {
+                                    handleOrderClick(dayOrders[3]);
                                   }
                                 }}
                               >
-                                +{dayOrders.length - 2} autres
+                                +{dayOrders.length - 3} autres
                               </button>
                             )}
                           </div>
@@ -340,8 +345,25 @@ const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ onOrderClick }) => 
           onClose={() => setSelectedOrder(null)}
           onStatusUpdate={handleStatusUpdate}
           onDeleteOrder={handleDeleteOrder}
+          onEditOrder={(order) => {
+            setEditingOrder(order);
+            setSelectedOrder(null);
+          }}
           paletteTypes={paletteTypes}
           userType="admin"
+        />
+      )}
+
+      {/* Edit Order Form Modal */}
+      {editingOrder && (
+        <OrderForm
+          onClose={() => setEditingOrder(null)}
+          onSuccess={async () => {
+            await fetchOrders();
+            toast.success('Commande modifiée avec succès !');
+            setEditingOrder(null);
+          }}
+          editOrder={editingOrder}
         />
       )}
     </div>
