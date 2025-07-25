@@ -53,67 +53,122 @@ const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess, editOrder }) 
     setLoading(true);
 
     try {
-      // Filtre les créneaux valides (exclut les créneaux de démonstration)
       const validTimeSlotId = formData.time_slot_id || undefined;
 
-      // Construction de la payload pour la Deno function
       const validItems = items.filter(item => item.palette_type_id && item.quantity > 0);
       
-      // Validation: vérifier qu'il y a au moins un produit valide
       if (validItems.length === 0) {
         throw new Error('Veuillez sélectionner au moins un type de palette avec une quantité valide.');
       }
 
-      const payload = {
-        customer_name: formData.customer_name,
-        customer_phone: formData.customer_phone,
-        customer_email: formData.customer_email,
-        customer_address: formData.customer_address,
-        delivery_address: formData.delivery_address,
-        delivery_date: formData.delivery_date,
-        notes: formData.notes,
-        created_via_api: formData.created_via_api,
-        time_slot_id: validTimeSlotId,
-        items: validItems
-      };
 
-      // Récupère le token d'accès de l'utilisateur connecté
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
-      const functionsUrl = import.meta.env.VITE_SUPABASE_FUNCTIONS_API_ORDERS_URL;
-      const response = await fetch(functionsUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(accessToken && { 'Authorization': `Bearer ${accessToken}` })
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        let errorMessage = 'Erreur lors de la création de la commande';
+      if (editOrder) {
+        // Mode édition - mise à jour de la commande existante
         
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.error || errorMessage;
-        } catch {
-          // Si le parsing JSON échoue, utilise le texte brut s'il existe
-          if (errorText && errorText.trim()) {
-            errorMessage = `Erreur lors de la création de la commande: ${errorText}`;
-          } else {
-            errorMessage = 'Erreur lors de la création de la commande. Le serveur n\'a pas fourni de détails.';
-          }
+        // 1. Mettre à jour les informations client si nécessaire
+        if (editOrder.customer_id) {
+          const { error: customerError } = await supabase
+            .from('customers')
+            .update({
+              name: formData.customer_name,
+              phone: formData.customer_phone,
+              email: formData.customer_email,
+              address: formData.customer_address
+            })
+            .eq('id', editOrder.customer_id);
+          
+          if (customerError) throw customerError;
         }
         
-        throw new Error(errorMessage);
+        // 2. Mettre à jour la commande principale
+        const { error: orderError } = await supabase
+          .from('orders')
+          .update({
+            palette_type_id: validItems[0].palette_type_id,
+            quantity: validItems[0].quantity,
+            delivery_address: formData.delivery_address,
+            delivery_date: formData.delivery_date,
+            time_slot_id: validTimeSlotId,
+            notes: formData.notes,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editOrder.id);
+        
+        if (orderError) throw orderError;
+        
+        // 3. Supprimer les anciens items et créer les nouveaux
+        const { error: deleteItemsError } = await supabase
+          .from('order_items')
+          .delete()
+          .eq('order_id', editOrder.id);
+        
+        if (deleteItemsError) throw deleteItemsError;
+        
+        const itemsToInsert = validItems.map(item => ({
+          order_id: editOrder.id,
+          palette_type_id: item.palette_type_id,
+          quantity: item.quantity
+        }));
+        
+        const { error: itemsError } = await supabase
+          .from('order_items')
+          .insert(itemsToInsert);
+        
+        if (itemsError) throw itemsError;
+        
+        toast.success('Commande modifiée avec succès !');
+      } else {
+        // Mode création - utilise la fonction existante
+        const payload = {
+          customer_name: formData.customer_name,
+          customer_phone: formData.customer_phone,
+          customer_email: formData.customer_email,
+          customer_address: formData.customer_address,
+          delivery_address: formData.delivery_address,
+          delivery_date: formData.delivery_date,
+          notes: formData.notes,
+          created_via_api: formData.created_via_api,
+          time_slot_id: validTimeSlotId,
+          items: validItems
+        };
+
+        const { data: { session } } = await supabase.auth.getSession();
+        const accessToken = session?.access_token;
+
+        const functionsUrl = import.meta.env.VITE_SUPABASE_FUNCTIONS_API_ORDERS_URL;
+        const response = await fetch(functionsUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(accessToken && { 'Authorization': `Bearer ${accessToken}` })
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorMessage = 'Erreur lors de la création de la commande';
+          
+          try {
+            const errorData = JSON.parse(errorText);
+            errorMessage = errorData.error || errorMessage;
+          } catch {
+            if (errorText && errorText.trim()) {
+              errorMessage = `Erreur lors de la création de la commande: ${errorText}`;
+            } else {
+              errorMessage = 'Erreur lors de la création de la commande. Le serveur n\'a pas fourni de détails.';
+            }
+          }
+          
+          throw new Error(errorMessage);
+        }
+
+        toast.success('Commande créée avec succès !');
       }
 
-      toast.success('Commande créée avec succès !');
       onSuccess();
     } catch (error: any) {
-      toast.error(error.message || 'Erreur lors de la création de la commande');
+      toast.error(error.message || (editOrder ? 'Erreur lors de la modification de la commande' : 'Erreur lors de la création de la commande'));
       console.error('Error creating order:', error);
     } finally {
       setLoading(false);
@@ -145,7 +200,9 @@ const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess, editOrder }) 
       <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-4 lg:p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-gray-900">Nouvelle commande</h2>
+            <h2 className="text-xl font-bold text-gray-900">
+              {editOrder ? 'Modifier la commande' : 'Nouvelle commande'}
+            </h2>
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 p-2"
@@ -389,7 +446,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess, editOrder }) 
                 disabled={loading}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed order-1 sm:order-2"
               >
-                {loading ? 'Création...' : 'Créer la commande'}
+                {loading ? (editOrder ? 'Modification...' : 'Création...') : (editOrder ? 'Modifier la commande' : 'Créer la commande')}
               </button>
             </div>
           </form>
