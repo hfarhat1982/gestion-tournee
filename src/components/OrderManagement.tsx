@@ -149,9 +149,9 @@ const OrderManagement: React.FC = () => {
       const endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       
       const { data, error } = await supabase.rpc('generate_time_slots_for_range', {
-        start_date: startDate,
-        end_date: endDate,
-        slot_capacity: 5
+        p_start_date: startDate,
+        p_end_date: endDate,
+        p_slot_capacity: 5
       });
 
       if (error) {
