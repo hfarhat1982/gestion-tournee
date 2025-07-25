@@ -191,7 +191,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               )}
               
               {/* Bouton supprimer - visible seulement pour les admins */}
-              {userType === 'admin' && (
+              {userType === 'admin' && order.status === 'cancelled' && (
                 <button
                   onClick={handleDelete}
                   className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"

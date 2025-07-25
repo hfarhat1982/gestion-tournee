@@ -10,16 +10,27 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewChange }) => {
-  const { signOut, user } = useAuthStore();
+  const { signOut, user, userType } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const navigation = [
+  const allNavigation = [
     { id: 'dashboard', name: 'Tableau de bord', icon: Package },
     { id: 'orders', name: 'Commandes', icon: FileText },
     { id: 'planning', name: 'Planning', icon: Calendar },
-    { id: 'customers', name: 'Clients', icon: Settings },
-    { id: 'api', name: 'API & Paramètres', icon: Settings },
+    { id: 'users', name: 'Utilisateurs', icon: Settings },
   ];
+
+  // Filtre la navigation selon le rôle
+  const navigation = allNavigation.filter(item => {
+    if (userType === 'client') {
+      return ['dashboard', 'orders'].includes(item.id);
+    }
+    if (userType === 'collaborateur') {
+      return ['dashboard', 'orders', 'planning'].includes(item.id);
+    }
+    // Admin a accès à tout
+    return true;
+  });
 
   const handleSignOut = async () => {
     try {
@@ -97,7 +108,10 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewChange }) 
                 <p className="text-sm font-medium text-gray-900 truncate">
                   {user?.email}
                 </p>
-                <p className="text-xs text-gray-500">Opérateur</p>
+                <p className="text-xs text-gray-500">
+                  {userType === 'admin' ? 'Administrateur' : 
+                   userType === 'collaborateur' ? 'Collaborateur' : 'Client'}
+                </p>
               </div>
             </div>
             <button

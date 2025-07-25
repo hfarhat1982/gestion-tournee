@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Search, Filter, Eye, CheckCircle, X, Edit, Package, RefreshCw, Trash2 } from 'lucide-react';
+import { Plus, Search, Filter, Package, RefreshCw } from 'lucide-react';
 import { Order, Customer, PaletteType } from '../types';
 import { useOrderStore } from '../stores/orderStore';
 import { useAuthStore } from '../stores/authStore';
@@ -300,21 +300,14 @@ const OrderManagement: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Statut
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredOrders.map((order) => (
                 <tr 
                   key={order.id} 
-                  className="hover:bg-gray-50 cursor-pointer"
-                  onClick={(e) => {
-                    if (!(e.target as HTMLElement).closest('button')) {
-                      setSelectedOrder(order);
-                    }
-                  }}
+                  className="hover:bg-gray-50 cursor-pointer" 
+                  onClick={() => setSelectedOrder(order)}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -373,49 +366,6 @@ const OrderManagement: React.FC = () => {
                       {getStatusLabel(order.status)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => handleStatusUpdate(order.id, 'cancelled')}
-                        className="text-orange-600 hover:text-orange-900 p-1 rounded"
-                        title="Annuler"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteOrder(order.id)}
-                        className="text-red-600 hover:text-red-900 p-1 rounded"
-                        title="Supprimer définitivement"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                      {order.status === 'provisional' && (
-                        <button
-                          onClick={() => handleStatusUpdate(order.id, 'confirmed')}
-                          className="text-green-600 hover:text-green-900 p-1 rounded"
-                          title="Confirmer"
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                        </button>
-                      )}
-                      {order.status === 'confirmed' && (
-                        <button
-                          onClick={() => handleStatusUpdate(order.id, 'delivered')}
-                          className="text-blue-600 hover:text-blue-900 p-1 rounded"
-                          title="Marquer comme livré"
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => setSelectedOrder(order)}
-                        className="text-gray-600 hover:text-gray-900 p-1 rounded"
-                        title="Voir détails"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -429,11 +379,7 @@ const OrderManagement: React.FC = () => {
           <div 
             key={order.id} 
             className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:bg-gray-50"
-            onClick={(e) => {
-              if (!(e.target as HTMLElement).closest('button')) {
-                setSelectedOrder(order);
-              }
-            }}
+            onClick={() => setSelectedOrder(order)}
           >
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center space-x-3">
@@ -486,43 +432,6 @@ const OrderManagement: React.FC = () => {
                 <p className="text-xs text-gray-500 truncate">{order.delivery_address}</p>
               </div>
             </div>
-
-            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => handleDeleteOrder(order.id)}
-                  className="text-red-600 hover:text-red-900 p-2 rounded-lg bg-red-50"
-                  title="Annuler"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-                {order.status === 'provisional' && (
-                  <button
-                    onClick={() => handleStatusUpdate(order.id, 'confirmed')}
-                    className="text-green-600 hover:text-green-900 p-2 rounded-lg bg-green-50"
-                    title="Confirmer"
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                  </button>
-                )}
-                {order.status === 'confirmed' && (
-                  <button
-                    onClick={() => handleStatusUpdate(order.id, 'delivered')}
-                    className="text-blue-600 hover:text-blue-900 p-2 rounded-lg bg-blue-50"
-                    title="Marquer comme livré"
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                  </button>
-                )}
-                <button
-                  onClick={() => setSelectedOrder(order)}
-                  className="text-gray-600 hover:text-gray-900 p-2 rounded-lg bg-gray-50"
-                  title="Voir détails"
-                >
-                  <Eye className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
           </div>
         ))}
       </div>
@@ -532,6 +441,18 @@ const OrderManagement: React.FC = () => {
         <OrderForm
           onClose={() => setShowOrderForm(false)}
           onSuccess={handleOrderCreated}
+        />
+      )}
+
+      {/* Order Detail Modal */}
+      {selectedOrder && (
+        <OrderDetailModal
+          order={selectedOrder}
+          onClose={() => setSelectedOrder(null)}
+          onStatusUpdate={handleStatusUpdate}
+          onDeleteOrder={handleDeleteOrder}
+          paletteTypes={paletteTypes}
+          userType={userType}
         />
       )}
     </div>

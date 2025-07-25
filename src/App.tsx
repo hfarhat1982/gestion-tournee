@@ -8,8 +8,7 @@ import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import OrderManagement from './components/OrderManagement';
 import PlanningCalendar from './components/PlanningCalendar';
-import ApiSettings from './components/ApiSettings';
-import CustomerManagement from './components/CustomerManagement';
+import UserManagement from './components/UserManagement';
 import Login from './components/Auth/Login';
 import Signup from './components/Auth/Signup';
 import OrderDetailModal from './components/OrderDetailModal';
@@ -61,10 +60,8 @@ function App() {
         return <OrderManagement />;
       case 'planning':
         return <PlanningCalendar />;
-      case 'customers':
-        return <CustomerManagement />;
-      case 'api':
-        return <ApiSettings />;
+      case 'users':
+        return <UserManagement />;
       default:
         return <Dashboard onViewChange={setCurrentView} onOrderClick={handleOrderClick} />;
     }

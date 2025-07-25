@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Order, TimeSlot, Customer, PaletteType } from '../types';
 import { supabase, handleSupabaseError } from '../lib/supabase';
+import { useAuthStore } from './authStore';
 
 interface OrderState {
   orders: Order[];
@@ -27,7 +28,9 @@ export const useOrderStore = create<OrderState>((set, get) => ({
   fetchOrders: async () => {
     try {
       set({ loading: true });
-      const { data, error } = await supabase
+      const { user, userType } = useAuthStore.getState();
+      
+      let query = supabase
         .from('orders')
         .select(`
           *,
@@ -38,8 +41,22 @@ export const useOrderStore = create<OrderState>((set, get) => ({
             *,
             palette_type:palette_types(*)
           )
-        `)
-        .order('created_at', { ascending: false });
+        `);
+      
+      // Si c'est un client, ne récupère que ses commandes
+      if (userType === 'client' && user) {
+        const { data: clientData } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('auth_user_id', user.id)
+          .single();
+        
+        if (clientData) {
+          query = query.eq('customer_id', clientData.id);
+        }
+      }
+      
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) handleSupabaseError(error);
       set({ orders: data || [] });

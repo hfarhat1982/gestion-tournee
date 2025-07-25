@@ -5,6 +5,7 @@ import { Customer, PaletteType } from '../types';
 import toast from 'react-hot-toast';
 import { format, addDays } from 'date-fns';
 import { supabase } from '../lib/supabase';
+import { useAuthStore } from '../stores/authStore';
 
 interface OrderFormProps {
   onClose: () => void;
@@ -13,12 +14,13 @@ interface OrderFormProps {
 
 const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess }) => {
   const { customers, paletteTypes, timeSlots, createOrder, fetchCustomers, fetchPaletteTypes, fetchTimeSlots } = useOrderStore();
+  const { user, userType } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    customer_name: '',
-    customer_phone: '',
-    customer_email: '',
-    customer_address: '',
+    customer_name: userType === 'client' ? '' : '',
+    customer_phone: userType === 'client' ? '' : '',
+    customer_email: userType === 'client' ? user?.email || '' : '',
+    customer_address: userType === 'client' ? '' : '',
     delivery_address: '',
     delivery_date: format(addDays(new Date(), 1), 'yyyy-MM-dd'),
     notes: '',
@@ -28,6 +30,30 @@ const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess }) => {
   const [items, setItems] = useState([
     { palette_type_id: '', quantity: 1 }
   ]);
+
+  // Récupère les infos du client connecté
+  useEffect(() => {
+    if (userType === 'client' && user) {
+      const fetchClientInfo = async () => {
+        const { data: clientData } = await supabase
+          .from('customers')
+          .select('*')
+          .eq('auth_user_id', user.id)
+          .single();
+        
+        if (clientData) {
+          setFormData(prev => ({
+            ...prev,
+            customer_name: clientData.name || '',
+            customer_phone: clientData.phone || '',
+            customer_email: clientData.email || user.email || '',
+            customer_address: clientData.address || '',
+          }));
+        }
+      };
+      fetchClientInfo();
+    }
+  }, [user, userType]);
 
   useEffect(() => {
     fetchCustomers();
@@ -160,6 +186,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess }) => {
                     name="customer_name"
                     value={formData.customer_name}
                     onChange={handleInputChange}
+                    disabled={userType === 'client'}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   />
@@ -175,6 +202,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess }) => {
                     name="customer_phone"
                     value={formData.customer_phone}
                     onChange={handleInputChange}
+                    disabled={userType === 'client'}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   />
@@ -190,6 +218,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess }) => {
                     name="customer_email"
                     value={formData.customer_email}
                     onChange={handleInputChange}
+                    disabled={userType === 'client'}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -204,6 +233,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess }) => {
                     name="customer_address"
                     value={formData.customer_address}
                     onChange={handleInputChange}
+                    disabled={userType === 'client'}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
