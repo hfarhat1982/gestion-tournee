@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Search, Filter, Package, Eye, Edit } from 'lucide-react';
+import { Plus, Search, Filter, Package, Eye } from 'lucide-react';
 import { Order, Customer, PaletteType } from '../types';
 import { useOrderStore } from '../stores/orderStore';
 import { useAuthStore } from '../stores/authStore';
@@ -283,18 +283,6 @@ const OrderManagement: React.FC = () => {
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
                       {getStatusLabel(order.status)}
                     </span>
-                    {(userType === 'admin' || userType === 'collaborateur') && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingOrder(order);
-                        }}
-                        className="ml-2 p-1 text-blue-600 hover:text-blue-800"
-                        title="Modifier"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                    )}
                   </td>
                 </tr>
               ))}
@@ -363,20 +351,6 @@ const OrderManagement: React.FC = () => {
               </div>
             </div>
             
-            {(userType === 'admin' || userType === 'collaborateur') && (
-              <div className="flex justify-end mt-3">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingOrder(order);
-                  }}
-                  className="p-2 text-blue-600 hover:text-blue-800 bg-blue-50 rounded-lg"
-                  title="Modifier"
-                >
-                  <Edit className="h-4 w-4" />
-                </button>
-              </div>
-            )}
           </div>
         ))}
       </div>
@@ -409,6 +383,7 @@ const OrderManagement: React.FC = () => {
           onClose={() => setSelectedOrder(null)}
           onStatusUpdate={handleStatusUpdate}
           onDeleteOrder={handleDeleteOrder}
+          onEditOrder={setEditingOrder}
           paletteTypes={paletteTypes}
           userType={userType}
         />

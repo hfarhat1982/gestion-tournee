@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, CheckCircle } from 'lucide-react';
+import { X, CheckCircle, Edit } from 'lucide-react';
 import { Order } from '../types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -9,6 +9,7 @@ interface OrderDetailModalProps {
   onClose: () => void;
   onStatusUpdate: (orderId: string, newStatus: Order['status']) => void;
   onDeleteOrder: (orderId: string) => void;
+  onEditOrder?: (order: Order) => void;
   paletteTypes: any[];
   userType?: string;
 }
@@ -18,6 +19,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   onClose,
   onStatusUpdate,
   onDeleteOrder,
+  onEditOrder,
   paletteTypes,
   userType
 }) => {
@@ -160,6 +162,20 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             )}
 
             <div className="flex justify-end space-x-3 pt-4 border-t">
+              {/* Bouton modifier - visible pour admin et collaborateur */}
+              {(userType === 'admin' || userType === 'collaborateur') && onEditOrder && (
+                <button
+                  onClick={() => {
+                    onEditOrder(order);
+                    onClose();
+                  }}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2"
+                >
+                  <Edit className="h-4 w-4" />
+                  Modifier
+                </button>
+              )}
+              
               {order.status !== 'cancelled' && (
                 <>
                   <button
