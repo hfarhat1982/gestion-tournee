@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { format, addDays } from 'date-fns';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/authStore';
+import { Order } from '../types';
 
 interface OrderFormProps {
   onClose: () => void;
@@ -17,6 +18,39 @@ const OrderForm: React.FC<OrderFormProps> = ({ onClose, onSuccess, editOrder }) 
   const { customers, paletteTypes, timeSlots, createOrder, fetchCustomers, fetchPaletteTypes, fetchTimeSlots } = useOrderStore();
   const { user, userType } = useAuthStore();
   const [loading, setLoading] = useState(false);
+
+  // Initialize formData state
+  const [formData, setFormData] = useState({
+    customer_name: editOrder?.customer?.name || '',
+    customer_phone: editOrder?.customer?.phone || '',
+    customer_email: editOrder?.customer?.email || '',
+    customer_address: editOrder?.customer?.address || '',
+    delivery_address: editOrder?.delivery_address || '',
+    delivery_date: editOrder?.delivery_date || '',
+    time_slot_id: editOrder?.time_slot_id || '',
+    notes: editOrder?.notes || '',
+    created_via_api: false
+  });
+
+  // Initialize items state
+  const [items, setItems] = useState(() => {
+    if (editOrder?.order_items && editOrder.order_items.length > 0) {
+      // Multi-item order
+      return editOrder.order_items.map(item => ({
+        palette_type_id: item.palette_type_id,
+        quantity: item.quantity
+      }));
+    } else if (editOrder?.palette_type_id) {
+      // Legacy single-item order
+      return [{
+        palette_type_id: editOrder.palette_type_id,
+        quantity: editOrder.quantity || 1
+      }];
+    } else {
+      // New order
+      return [{ palette_type_id: '', quantity: 1 }];
+    }
+  });
 
   // Récupère les infos du client connecté
   useEffect(() => {
